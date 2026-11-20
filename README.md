@@ -80,8 +80,7 @@ Leave `APP_PASSWORD` unset locally to run without a login.
 
 ```bash
 npm install
-cp .env.example .env     # optional; defaults work
-npm run dev              # server on :3000, Vite dev client on :5173
+npm run dev              # server on :3000, Vite dev client on :5173 (the defaults work as they are)
 ```
 
 Open http://localhost:5173 in dev. For a production-style run:
@@ -103,6 +102,10 @@ sample PowerPoint file `tests/fixtures/sample.pptx` used by the parser tests).
 | `APP_PASSWORD` | unset (open) | Optional shared password for the control panel and API. |
 | `MAX_VIDEO_MB` | `500` | Largest background video you can upload, in megabytes. |
 
+To change a setting locally, create a `.env` file in the project folder with one `NAME=value` per
+line (for example `APP_PASSWORD=mypassword`). `npm run dev` reads it automatically, and git ignores
+it. `npm start` does not read `.env`, so set the variables in your terminal instead.
+
 The two display pages and the video files (`/media/...`) are always open, because the TV windows
 need them without logging in. They only show what is on screen, and cannot change anything.
 
@@ -121,4 +124,4 @@ otherwise. Railway uses it to decide whether a deploy is healthy (configured in 
    logs a warning, because data would be lost on each redeploy.
 4. Under **Settings → Networking**, generate a public domain.
 
-No secrets are committed. Copy `.env.example` to `.env` for local use only.
+No secrets are committed. Set variables such as `APP_PASSWORD` in Railway's **Variables** tab, not in the repo.
