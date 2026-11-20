@@ -134,17 +134,22 @@ function VideoBackground({ url }: { url: string | null }) {
 interface Props {
   kind: "main" | "singers";
   state: DisplayState;
-  /** Small control-panel preview: no video (saves CPU) and a hint background instead. */
+  /** Small control-panel preview: no playing video (saves CPU) and a hint background instead. */
   preview?: boolean;
+  /** With `preview`: show the video's first frame (paused) so readability can be judged. */
+  stillVideo?: boolean;
 }
 
 /** One display's picture. Used full screen on the display pages and scaled down in the control panel. */
-export function DisplayView({ kind, state, preview = false }: Props) {
+export function DisplayView({ kind, state, preview = false, stillVideo = false }: Props) {
+  const showStill = preview && stillVideo && kind === "main" && state.videoUrl !== null;
   const style = kind === "main" ? state.settings.main : state.settings.singers;
   const background = kind === "singers" ? state.settings.singers.backgroundColor : "#000";
   return (
-    <div className={`dv${preview && kind === "main" ? " dv-preview-main" : ""}`} style={{ background }}>
+    <div className={`dv${preview && kind === "main" && !showStill ? " dv-preview-main" : ""}`} style={{ background }}>
       {kind === "main" && !preview && <VideoBackground url={state.videoUrl} />}
+      {/* #t=0.1 makes the browser show a frame without playing the video */}
+      {showStill && <video className="dv-video still" src={`${state.videoUrl}#t=0.1`} muted playsInline preload="metadata" />}
       <div className="dv-text-wrap" style={{ opacity: state.blank ? 0 : 1 }}>
         <FadingText text={state.lyrics} style={style} />
       </div>

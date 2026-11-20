@@ -162,6 +162,16 @@ export function createRepo(db: Db) {
       return (db.prepare("SELECT * FROM videos ORDER BY name COLLATE NOCASE, id").all() as VideoRow[]).map(toVideo);
     },
     getVideo,
+    /** videoId -> number of presentations that currently use it as their Main background. */
+    videoUsage(): Map<number, number> {
+      const usage = new Map<number, number>();
+      const rows = db.prepare("SELECT settings FROM presentations").all() as { settings: string }[];
+      for (const row of rows) {
+        const id = normalizeSettings(safeParse(row.settings)).main.videoId;
+        if (id !== null) usage.set(id, (usage.get(id) ?? 0) + 1);
+      }
+      return usage;
+    },
     addVideo(v: { name: string; filename: string; mime: string; size: number }): VideoRecord {
       const info = db
         .prepare("INSERT INTO videos (name, filename, mime, size) VALUES (?, ?, ?, ?)")

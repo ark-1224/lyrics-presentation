@@ -41,6 +41,19 @@ describe("video upload and serving", () => {
     expect(fs.readdirSync(config.videosDir)).toEqual([]); // the file is gone from disk too
   });
 
+  it("reports how many presentations use each video", async () => {
+    const { app, repo } = makeTestApp();
+    const a = (await request(app).post("/api/videos").attach("file", fakeMp4(), "a.mp4")).body;
+    const b = (await request(app).post("/api/videos").attach("file", fakeMp4(), "b.mp4")).body;
+    const p1 = repo.createPresentation("One");
+    const p2 = repo.createPresentation("Two");
+    repo.updateSettings(p1.id, { main: { videoId: a.id } });
+    repo.updateSettings(p2.id, { main: { videoId: a.id } });
+    const list = (await request(app).get("/api/videos")).body.videos as { id: number; usedBy: number }[];
+    expect(list.find((v) => v.id === a.id)?.usedBy).toBe(2);
+    expect(list.find((v) => v.id === b.id)?.usedBy).toBe(0);
+  });
+
   it("accepts webm", async () => {
     const { app } = makeTestApp();
     const up = await request(app).post("/api/videos").attach("file", fakeWebm(), "loop.webm");

@@ -112,7 +112,11 @@ export function videoRoutes(repo: Repo, config: Config, onChange: () => void): R
   const r = Router();
 
   r.get("/videos", (_req, res) => {
-    res.json({ videos: repo.listVideos().map(publicVideo), maxUploadMb: config.maxVideoMb });
+    const usage = repo.videoUsage();
+    res.json({
+      videos: repo.listVideos().map((v) => ({ ...publicVideo(v), usedBy: usage.get(v.id) ?? 0 })),
+      maxUploadMb: config.maxVideoMb,
+    });
   });
 
   r.post("/videos", async (req: Request, res: Response) => {

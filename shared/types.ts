@@ -177,4 +177,6 @@ export interface Video {
   mime: string;
   url: string;
   createdAt: string;
+  /** How many presentations use this as their Main background (only set in the video list). */
+  usedBy?: number;
 }

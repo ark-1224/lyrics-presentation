@@ -3,9 +3,8 @@
 Lyric presentation web app for church/event use. One operator controls everything from a
 browser; two display windows (Main with video, Singers with lyrics only) stay in sync.
 
-> Status: steps **(a)** setup/deploy/health check, **(b)** control panel with presentations and
-> slides, and **(c)** real-time sync with the two displays are done. The full video manager,
-> styling controls and PPTX import come next.
+> Status: steps **(a)** setup/deploy/health check, **(b)** control panel, **(c)** real-time sync
+> with the two displays, and **(d)** video manager + styling controls are done. PPTX import comes next.
 
 ## Stack
 
@@ -33,9 +32,21 @@ styling) and pushes it to every window over a WebSocket at `/ws`. A display that
 late gets the full state immediately; if its connection drops it keeps showing the last slide and
 reconnects by itself. Private notes are never sent to the display windows.
 
-Background video: pick one in the editor (or **Upload video…**, mp4/webm up to `MAX_VIDEO_MB`).
-Videos are stored in `DATA_DIR/videos`. The Main display shows it looping and muted behind the text.
-The small Main preview in the control panel does not play the video, to save CPU.
+## Styling and videos
+
+The control panel has three tabs next to the presentation list:
+
+- **Slides**: edit lyrics and private notes, drag to reorder, **▶ Show** to put a slide on screen.
+- **Style**: per presentation, separately for the Main and Singers displays: font, text size, text
+  color, alignment, vertical position, and outline/shadow strength (to keep text readable over a
+  bright video). Singers also has a background color (default black). Every change shows in a
+  preview right away and reaches the live displays a moment later; there is no Save button.
+  Text size is a percentage of the screen height, so it looks the same at 1080p and 4K.
+  The Main preview shows the chosen video's first frame (paused) so you can judge readability.
+- **Videos**: the shared library of background videos. Upload (mp4 or webm, up to `MAX_VIDEO_MB`,
+  with a progress bar and Cancel), preview, rename, and delete. Deleting asks first and warns if
+  presentations use the video or it is on the Main display right now; those presentations then go
+  back to no video. Files are stored in `DATA_DIR/videos` and checked on upload (type and contents).
 
 ## Turning on the password
 

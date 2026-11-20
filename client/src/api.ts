@@ -86,22 +86,33 @@ export const api = {
   listVideos: () => request<{ videos: Video[]; maxUploadMb: number }>("GET", "/api/videos"),
   deleteVideo: (id: number) => request<void>("DELETE", `/api/videos/${id}`),
   renameVideo: (id: number, name: string) => request<Video>("PATCH", `/api/videos/${id}`, { name }),
-  /** Multipart upload; the browser sets the Content-Type boundary itself. */
-  async uploadVideo(file: File): Promise<Video> {
-    const form = new FormData();
-    form.append("file", file);
-    let res: Response;
-    try {
-      res = await fetch("/api/videos", { method: "POST", body: form });
-    } catch {
-      throw new ApiError("Upload failed. Check your connection and try again.", 0);
-    }
-    if (res.status === 401) onUnauthorized?.();
-    if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      throw new ApiError(data?.error ?? `Upload failed (${res.status})`, res.status);
-    }
-    return (await res.json()) as Video;
+  /**
+   * Multipart upload with progress (fetch can't report upload progress, XMLHttpRequest can).
+   * The browser sets the multipart Content-Type boundary itself. `onProgress` gets 0..1.
+   */
+  uploadVideo(file: File, onProgress?: (fraction: number) => void, signal?: AbortSignal): Promise<Video> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/videos");
+      xhr.responseType = "json";
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+      };
+      xhr.onerror = () => reject(new ApiError("Upload failed. Check your connection and try again.", 0));
+      xhr.onabort = () => reject(new ApiError("Upload cancelled.", 0));
+      xhr.onload = () => {
+        const body = xhr.response as (Video & { error?: string }) | null;
+        if (xhr.status === 401) onUnauthorized?.();
+        if (xhr.status >= 200 && xhr.status < 300 && body) return resolve(body);
+        // A proxy in front of the server may answer 413 with a plain page instead of our JSON.
+        const fallback = xhr.status === 413 ? "The server rejected the file as too large." : `Upload failed (${xhr.status})`;
+        reject(new ApiError(body?.error ?? fallback, xhr.status));
+      };
+      signal?.addEventListener("abort", () => xhr.abort());
+      const form = new FormData();
+      form.append("file", file);
+      xhr.send(form);
+    });
   },
 
   addSlide: (presentationId: number) => request<Slide>("POST", `/api/presentations/${presentationId}/slides`, {}),

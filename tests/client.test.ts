@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { checkVideoFile, formatBytes } from "../client/src/format";
 import { reconnectDelay } from "../client/src/socket";
 import { isTypingTarget, shortcutFor } from "../client/src/shortcuts";
 import { textStyle } from "../client/src/DisplayView";
@@ -64,5 +65,28 @@ describe("display text style", () => {
   it("only draws a text outline when shadow strength is above zero", () => {
     expect(textStyle({ ...DEFAULT_SETTINGS.main, shadow: 0 }).textShadow).toBe("none");
     expect(String(textStyle({ ...DEFAULT_SETTINGS.main, shadow: 6 }).textShadow)).toContain("rgba(0,0,0,0.9)");
+  });
+});
+
+describe("upload checks", () => {
+  it("formats file sizes", () => {
+    expect(formatBytes(512)).toBe("512 B");
+    expect(formatBytes(442702)).toBe("432 KB");
+    expect(formatBytes(50 * 1024 * 1024)).toBe("50.0 MB");
+    expect(formatBytes(2.5 * 1024 * 1024 * 1024)).toBe("2.50 GB");
+  });
+
+  it("accepts mp4/webm within the limit, in any letter case", () => {
+    expect(checkVideoFile({ name: "loop.mp4", size: 1000 }, 500)).toBeNull();
+    expect(checkVideoFile({ name: "LOOP.WEBM", size: 1000 }, 500)).toBeNull();
+    expect(checkVideoFile({ name: "loop.mp4", size: 500 * 1024 * 1024 }, 500)).toBeNull(); // exactly at the limit
+  });
+
+  it("explains why a file is refused", () => {
+    expect(checkVideoFile({ name: "clip.mov", size: 1000 }, 500)).toMatch(/Only \.mp4 and \.webm/);
+    expect(checkVideoFile({ name: "notes.txt", size: 10 }, 500)).toMatch(/isn't supported/);
+    const tooBig = checkVideoFile({ name: "huge.mp4", size: 600 * 1024 * 1024 }, 500);
+    expect(tooBig).toContain("600.0 MB");
+    expect(tooBig).toContain("500 MB limit");
   });
 });
