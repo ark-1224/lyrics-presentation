@@ -5,8 +5,10 @@ import type { ErrorRequestHandler } from "express";
 import { createAuth } from "./auth.js";
 import type { Config } from "./config.js";
 import type { Db } from "./db.js";
+import { createLive } from "./live.js";
 import { createRepo } from "./repo.js";
 import { presentationRoutes } from "./routes/presentations.js";
+import { mediaRoute, videoRoutes } from "./routes/videos.js";
 
 /** Folder with the built React app (produced by `npm run build:client`). */
 const CLIENT_DIST = path.resolve(import.meta.dirname, "../client");
@@ -20,7 +22,18 @@ function isWritable(dir: string): boolean {
   }
 }
 
-export function createApp(config: Config, db: Db) {
+/** The long-lived pieces shared by the HTTP routes and the WebSocket layer. */
+export function createServices(config: Config, db: Db) {
+  fs.mkdirSync(config.videosDir, { recursive: true });
+  const repo = createRepo(db);
+  const auth = createAuth(config.appPassword);
+  const live = createLive(repo);
+  return { repo, auth, live };
+}
+export type Services = ReturnType<typeof createServices>;
+
+export function createApp(config: Config, services: Services) {
+  const { repo, auth, live } = services;
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", 1); // Railway terminates HTTPS in front of us; needed for req.secure / req.ip
@@ -39,8 +52,10 @@ export function createApp(config: Config, db: Db) {
     });
   });
 
+  // Video files are public (display windows load them); see mediaRoute.
+  app.use(mediaRoute(repo, config));
+
   // --- API -----------------------------------------------------------------------------
-  const auth = createAuth(config.appPassword);
   const api = express.Router();
   // These three work without a session so the login screen can function.
   api.get("/session", auth.session);
@@ -48,7 +63,8 @@ export function createApp(config: Config, db: Db) {
   api.post("/logout", auth.logout);
   // Everything below needs the shared password (when APP_PASSWORD is set).
   api.use(auth.requireAuth);
-  api.use(presentationRoutes(createRepo(db)));
+  api.use(presentationRoutes(repo, live.refresh));
+  api.use(videoRoutes(repo, config, live.refresh));
   api.use((_req, res) => void res.status(404).json({ error: "Not found" }));
   app.use("/api", api);
 
@@ -56,7 +72,7 @@ export function createApp(config: Config, db: Db) {
   if (fs.existsSync(CLIENT_DIST)) {
     app.use(express.static(CLIENT_DIST));
     // /control and /display/* are client-side routes: always answer with index.html.
-    app.get(/^\/(?!api\/|healthz).*/, (_req, res) => {
+    app.get(/^\/(?!api\/|healthz|media\/|ws).*/, (_req, res) => {
       res.sendFile(path.join(CLIENT_DIST, "index.html"));
     });
   }

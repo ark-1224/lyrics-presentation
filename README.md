@@ -3,8 +3,9 @@
 Lyric presentation web app for church/event use. One operator controls everything from a
 browser; two display windows (Main with video, Singers with lyrics only) stay in sync.
 
-> Status: steps **(a)** setup/deploy/health check and **(b)** control panel with presentations
-> and slides are done. Live displays, video upload/styling and PPTX import come next.
+> Status: steps **(a)** setup/deploy/health check, **(b)** control panel with presentations and
+> slides, and **(c)** real-time sync with the two displays are done. The full video manager,
+> styling controls and PPTX import come next.
 
 ## Stack
 
@@ -16,6 +17,25 @@ One app, one process, one Docker image.
 Open `/control` to create, rename, duplicate and delete presentations, and to add, edit,
 drag-reorder and delete slides (lyrics plus private notes). Edits autosave. Data lives in
 `DATA_DIR/app.db`.
+
+## Running a service (live sync)
+
+1. Open `/control` on the laptop. Open `/display/main` and `/display/singers` in two more
+   browser windows, drag each onto its own TV (extended display) and click **Click to start** in
+   each (that click is what lets the browser go fullscreen). The control panel shows a green
+   light for each connected display.
+2. In the control panel pick a presentation and click **Go live**, or click **▶ Show** on any slide.
+3. Run the show with **Next / Previous / Blank**, or the keyboard: **→ ↓ Space** next, **← ↑**
+   previous, **B** blank. Shortcuts pause while you are typing in a text box (press **Esc** to leave it).
+
+How it works: the server keeps the one true state (which presentation, which slide, blank on/off,
+styling) and pushes it to every window over a WebSocket at `/ws`. A display that refreshes or joins
+late gets the full state immediately; if its connection drops it keeps showing the last slide and
+reconnects by itself. Private notes are never sent to the display windows.
+
+Background video: pick one in the editor (or **Upload video…**, mp4/webm up to `MAX_VIDEO_MB`).
+Videos are stored in `DATA_DIR/videos`. The Main display shows it looping and muted behind the text.
+The small Main preview in the control panel does not play the video, to save CPU.
 
 ## Turning on the password
 
@@ -48,10 +68,11 @@ Other scripts: `npm run lint`, `npm test`, `npm run typecheck`.
 | --- | --- | --- |
 | `PORT` | `3000` | Port to listen on. Railway sets this automatically. |
 | `DATA_DIR` | `RAILWAY_VOLUME_MOUNT_PATH`, else `./data` | Where the database and uploaded videos live. |
-
 | `APP_PASSWORD` | unset (open) | Optional shared password for the control panel and API. |
+| `MAX_VIDEO_MB` | `500` | Largest background video you can upload, in megabytes. |
 
-`MAX_VIDEO_MB` is added with video upload in step (d).
+The two display pages and the video files (`/media/...`) are always open, because the TV windows
+need them without logging in. They only show what is on screen, and cannot change anything.
 
 ## Health check
 

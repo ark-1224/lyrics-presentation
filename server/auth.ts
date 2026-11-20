@@ -12,7 +12,10 @@ function safeEqual(a: string, b: string): boolean {
   return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
 }
 
-function readCookie(req: Request, name: string): string | undefined {
+/** Anything with request headers: an Express request or a raw WebSocket upgrade request. */
+type HasHeaders = Pick<Request, "headers">;
+
+function readCookie(req: HasHeaders, name: string): string | undefined {
   for (const part of (req.headers.cookie ?? "").split(";")) {
     const [k, ...rest] = part.trim().split("=");
     if (k === name) return rest.join("=");
@@ -33,7 +36,7 @@ export function createAuth(password: string | undefined) {
     : "";
   const attempts = new Map<string, { count: number; resetAt: number }>();
 
-  const isAuthenticated = (req: Request): boolean => {
+  const isAuthenticated = (req: HasHeaders): boolean => {
     if (!enabled) return true;
     const cookie = readCookie(req, COOKIE_NAME);
     return cookie !== undefined && safeEqual(cookie, token);

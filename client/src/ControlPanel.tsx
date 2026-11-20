@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import type { DisplayState, LiveInfo, Presence } from "../../shared/types";
 import { ApiError, api, setUnauthorizedHandler } from "./api";
-import type { Presentation, PresentationDetail, SessionInfo, Slide } from "./api";
+import type { Presentation, PresentationDetail, SessionInfo, Slide, Video } from "./api";
 import { Library } from "./Library";
+import { LivePanel } from "./LivePanel";
 import { Login } from "./Login";
 import { SlideEditor } from "./SlideEditor";
+import { isTypingTarget, shortcutFor } from "./shortcuts";
+import { useSocket } from "./socket";
+import { VideoPicker } from "./VideoPicker";
 
 const SELECTED_KEY = "lp.selectedPresentation";
 
@@ -24,29 +29,80 @@ function saveSelected(id: number | null) {
   }
 }
 
-/** /control: owns the data for the library + slide editor and talks to the API. */
+/** /control: handles the optional password, then shows the workspace. */
 export function ControlPanel() {
   const [session, setSession] = useState<SessionInfo | null>(null);
+  const [error, setError] = useState("");
+
+  // Find out whether a password is needed; any later 401 sends us back to the login screen.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setSession((s) => (s ? { ...s, authenticated: false } : s)));
+    api.session().then(setSession).catch((err: unknown) => setError(err instanceof Error ? err.message : "Can't reach the server"));
+  }, []);
+
+  if (!session) return <main className="loading">{error || "Loading…"}</main>;
+  if (!session.authenticated) return <Login onSuccess={() => setSession({ ...session, authenticated: true })} />;
+
+  async function signOut() {
+    await api.logout().catch(() => {});
+    setSession((s) => (s ? { ...s, authenticated: false } : s));
+  }
+  return <Workspace authRequired={session.authRequired} onSignOut={() => void signOut()} />;
+}
+
+/** Everything that needs a logged-in operator: live controls, library, slides, videos. */
+function Workspace({ authRequired, onSignOut }: { authRequired: boolean; onSignOut: () => void }) {
   const [presentations, setPresentations] = useState<Presentation[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(loadSelected);
   const [loadedDetail, setDetail] = useState<PresentationDetail | null>(null);
   // Remember which presentation the focus belongs to, so it never leaks onto another one.
   const [focus, setFocus] = useState<{ presentationId: number; slideId: number } | null>(null);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [maxUploadMb, setMaxUploadMb] = useState(500);
   const [error, setError] = useState("");
+
+  // Live state, pushed by the server over the WebSocket.
+  const [live, setLive] = useState<LiveInfo | null>(null);
+  const [display, setDisplay] = useState<DisplayState | null>(null);
+  const [presence, setPresence] = useState<Presence>({ main: 0, singers: 0 });
+  const { connected, send } = useSocket("control", (msg) => {
+    if (msg.type === "live") {
+      setLive(msg.live);
+      setPresence(msg.presence);
+      setDisplay(msg.display);
+    }
+  });
 
   const fail = useCallback((err: unknown) => {
     if (err instanceof ApiError && err.status === 401) return; // login screen takes over
     setError(err instanceof Error ? err.message : "Something went wrong");
   }, []);
 
-  // Find out whether a password is needed; any later 401 sends us back to the login screen.
+  // --- Keyboard shortcuts for the live controls ----------------------------------------------
   useEffect(() => {
-    setUnauthorizedHandler(() => setSession((s) => (s ? { ...s, authenticated: false } : s)));
-    api.session().then(setSession).catch(fail);
-  }, [fail]);
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (e.key === "Escape" && isTypingTarget(target)) return void target?.blur(); // back to shortcut mode
+      if (document.querySelector("dialog[open]")) return; // a confirmation is open
+      if (target?.closest?.("[aria-roledescription='sortable']")) return; // keyboard drag-and-drop uses Space/arrows
+      const action = shortcutFor({ key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, repeat: e.repeat, target });
+      if (!action) return;
+      e.preventDefault();
+      send({ type: action });
+    };
+    // Space on a focused button would otherwise ALSO click that button when released.
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === " " && (e.target as HTMLElement | null)?.tagName === "BUTTON") e.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [send]);
 
-  const authenticated = session?.authenticated === true;
-
+  // --- Loading data ----------------------------------------------------------------------------
   const applyList = useCallback((list: Presentation[]) => {
     setPresentations(list);
     // Keep the selection valid: fall back to the first presentation if it was removed.
@@ -61,16 +117,21 @@ export function ControlPanel() {
     }
   }, [applyList, fail]);
 
-  // Initial load once we are allowed in.
   useEffect(() => {
-    if (!authenticated) return;
     api.listPresentations().then(applyList).catch(fail);
-  }, [authenticated, applyList, fail]);
+    api
+      .listVideos()
+      .then((r) => {
+        setVideos(r.videos);
+        setMaxUploadMb(r.maxUploadMb);
+      })
+      .catch(fail);
+  }, [applyList, fail]);
 
   // Load the slides of the selected presentation.
   useEffect(() => {
     saveSelected(selectedId);
-    if (!authenticated || selectedId === null) return;
+    if (selectedId === null) return;
     let cancelled = false; // ignore a slow response if the selection changed meanwhile
     api
       .getPresentation(selectedId)
@@ -79,14 +140,14 @@ export function ControlPanel() {
     return () => {
       cancelled = true;
     };
-  }, [authenticated, selectedId, fail]);
+  }, [selectedId, fail]);
 
   // Only show slides that belong to the current selection (hides stale data while loading).
-  const detail = authenticated && loadedDetail?.id === selectedId ? loadedDetail : null;
+  const detail = loadedDetail?.id === selectedId ? loadedDetail : null;
   const focusSlideId = focus && detail && focus.presentationId === detail.id ? focus.slideId : null;
+  const isLive = detail !== null && live?.presentationId === detail.id;
 
-  const setSlides = (fn: (slides: Slide[]) => Slide[]) =>
-    setDetail((d) => (d ? { ...d, slides: fn(d.slides) } : d));
+  const setSlides = (fn: (slides: Slide[]) => Slide[]) => setDetail((d) => (d ? { ...d, slides: fn(d.slides) } : d));
   const bumpCount = (id: number, delta: number) =>
     setPresentations((list) => list.map((p) => (p.id === id ? { ...p, slideCount: p.slideCount + delta } : p)));
 
@@ -178,16 +239,24 @@ export function ControlPanel() {
     }
   }
 
-  async function signOut() {
-    await api.logout().catch(fail);
-    setSession((s) => (s ? { ...s, authenticated: false } : s));
-    setPresentations([]);
-    setDetail(null);
-  }
+  // --- Going live and background video ----------------------------------------------------------
+  const showSlide = (slideId: number) => detail && send({ type: "show", presentationId: detail.id, slideId });
+  const goLive = () => detail && send({ type: "show", presentationId: detail.id });
 
-  if (!session) return <main className="loading">{error || "Loading…"}</main>;
-  if (!authenticated) {
-    return <Login onSuccess={() => setSession({ ...session, authenticated: true })} />;
+  async function selectVideo(videoId: number | null) {
+    if (!detail) return;
+    const id = detail.id;
+    try {
+      const settings = await api.updateSettings(id, { main: { videoId } });
+      setDetail((d) => (d && d.id === id ? { ...d, settings } : d));
+    } catch (err) {
+      fail(err);
+    }
+  }
+  async function uploadVideo(file: File) {
+    const video = await api.uploadVideo(file); // errors propagate to the picker, which shows them
+    setVideos((vs) => [...vs, video].sort((a, b) => a.name.localeCompare(b.name)));
+    await selectVideo(video.id);
   }
 
   return (
@@ -195,8 +264,8 @@ export function ControlPanel() {
       <header className="topbar">
         <h1>Lyric Presenter</h1>
         <span className="muted">Control panel</span>
-        {session.authRequired && (
-          <button type="button" className="signout" onClick={() => void signOut()}>
+        {authRequired && (
+          <button type="button" className="signout" onClick={onSignOut}>
             Sign out
           </button>
         )}
@@ -211,10 +280,13 @@ export function ControlPanel() {
         </div>
       )}
 
+      <LivePanel live={live} display={display} presence={presence} connected={connected} send={send} />
+
       <div className="layout">
         <Library
           presentations={presentations}
           selectedId={selectedId}
+          livePresentationId={live?.presentationId ?? null}
           onSelect={setSelectedId}
           onCreate={createPresentation}
           onRename={renamePresentation}
@@ -227,11 +299,23 @@ export function ControlPanel() {
             name={detail.name}
             slides={detail.slides}
             focusSlideId={focusSlideId}
+            isLive={isLive}
+            liveSlideId={isLive ? (live?.slideId ?? null) : null}
+            onGoLive={goLive}
+            onShow={showSlide}
             onAdd={addSlide}
             onSave={saveSlide}
             onDelete={deleteSlide}
             onReorder={reorderSlides}
-          />
+          >
+            <VideoPicker
+              videos={videos}
+              selectedId={detail.settings.main.videoId}
+              maxUploadMb={maxUploadMb}
+              onSelect={(id) => void selectVideo(id)}
+              onUpload={uploadVideo}
+            />
+          </SlideEditor>
         ) : (
           <section className="editor empty-state">
             <p className="muted">

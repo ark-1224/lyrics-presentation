@@ -35,6 +35,22 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX slides_by_presentation ON slides(presentation_id, position);
   `,
+  `
+  -- Uploaded background videos. The file itself lives in DATA_DIR/videos/<filename>.
+  CREATE TABLE videos (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,  -- never reused, so /media/<id> can be cached forever
+    name       TEXT NOT NULL,
+    filename   TEXT NOT NULL UNIQUE,
+    mime       TEXT NOT NULL,
+    size       INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  -- Small key/value store; currently holds the live state so a restart resumes where we were.
+  CREATE TABLE kv (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `,
 ];
 
 function migrate(db: Db) {

@@ -1,14 +1,9 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createApp } from "../server/app.js";
-import { openDb } from "../server/db.js";
+import { makeTestApp } from "./helpers.js";
 
 function makeApp(appPassword?: string) {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "lyrics-api-"));
-  return createApp({ port: 0, dataDir, persistent: true, warnings: [], appPassword }, openDb(":memory:"));
+  return makeTestApp({ appPassword }).app;
 }
 
 describe("presentations API", () => {

@@ -126,3 +126,75 @@ dialog.confirm p { margin: 0 0 1rem; }
 .login form { display: flex; flex-direction: column; gap: 0.75rem; width: min(22rem, 90vw); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
 .login label { display: flex; flex-direction: column; gap: 0.3rem; font-weight: 600; }
 .loading, .placeholder { padding: 2rem; }
+
+/* --- live panel --- */
+.live { margin: 1rem 1rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+.live-head { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.live-title { font-weight: 600; overflow-wrap: anywhere; }
+.chips { margin-left: auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; padding: 0.2rem 0.6rem; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); }
+.chip .dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--muted); }
+.chip.on .dot { background: var(--ok); }
+.chip.on { border-color: var(--ok); }
+.chip.unknown { color: var(--muted); border-style: dashed; }
+.chip.warn { color: var(--danger); border-color: var(--danger); }
+.live-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 900px) { .live-body { grid-template-columns: 1fr; } }
+.live-controls { display: flex; flex-direction: column; gap: 0.6rem; }
+.buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+button.big { font-size: 1.05rem; padding: 0.6rem 1.1rem; }
+button.blank-on { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+.blank-note { margin: 0; color: var(--danger); font-size: 0.9rem; }
+.slide-peek { border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; background: var(--bg); }
+.slide-peek h3 { margin: 0 0 0.25rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.slide-peek pre { margin: 0; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 9rem; overflow: auto; }
+.slide-peek.now { border-color: var(--accent); }
+.slide-peek.now pre { font-size: 1.1rem; font-weight: 600; }
+.slide-peek.next pre { color: var(--muted); }
+.slide-peek.notes { border-style: dashed; }
+.shortcuts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.2rem 1rem; font-size: 0.82rem; color: var(--muted); }
+.shortcuts div { display: flex; gap: 0.5rem; }
+.shortcuts dt { font-family: ui-monospace, monospace; color: var(--text); white-space: nowrap; }
+.shortcuts dd { margin: 0; }
+.previews { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+@media (max-width: 600px) { .previews { grid-template-columns: 1fr; } }
+.previews figure { margin: 0; }
+.previews figcaption { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+.preview-box { aspect-ratio: 16 / 9; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #000; }
+
+/* --- badges and live highlighting in the library / slide cards --- */
+.live-badge { display: inline-block; margin-left: 0.5rem; padding: 0.05rem 0.45rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; border-radius: 4px; background: var(--danger); color: #fff; vertical-align: middle; }
+.slide-card.is-live { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+.slide-head .live-badge { margin-left: 0; }
+.show-btn { margin-left: 0.25rem; }
+.go-live { border-color: var(--danger); color: var(--danger); font-weight: 600; }
+.editor-head .add-top { margin-left: 0; }
+.editor-head h2 + .muted { margin-right: auto; }
+.video-picker { display: flex; align-items: end; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.9rem; padding: 0.6rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.video-picker label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; font-weight: 600; }
+.video-picker select { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.5rem; min-width: 14rem; }
+.video-picker .error { flex-basis: 100%; }
+
+/* --- display pages (/display/main, /display/singers) --- */
+body.display-body { background: #000; overflow: hidden; margin: 0; }
+.display-stage { position: fixed; inset: 0; background: #000; overflow: hidden; }
+.display-stage.started { cursor: none; }
+/* Everything inside a display is sized in container units, so it looks identical full screen
+   at 1080p or 4K and inside the small control-panel previews. */
+.dv { container-type: size; position: relative; width: 100%; height: 100%; overflow: hidden; }
+.dv-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 800ms ease; }
+.dv-text-wrap { position: absolute; inset: 0; transition: opacity 250ms ease; }
+.dv-text { position: absolute; line-height: 1.25; white-space: pre-wrap; overflow-wrap: break-word; animation: dv-in 350ms ease both; }
+.dv-text.leaving { animation: dv-out 350ms ease both; }
+@keyframes dv-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dv-out { from { opacity: 1; } to { opacity: 0; } }
+.dv-preview-main { background-image: linear-gradient(135deg, #1b2a4a, #3b2a55) !important; }
+.display-start {
+  position: absolute; inset: 0; width: 100%; border: none; border-radius: 0;
+  background: rgb(0 0 0 / 0.82); color: #fff; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; font-size: 1.1rem;
+}
+.display-start strong { font-size: 2.2rem; }
+.display-start span { opacity: 0.75; max-width: 32rem; text-align: center; }
+.offline-dot { position: absolute; right: 1.2vh; bottom: 1.2vh; width: 1.4vh; height: 1.4vh; border-radius: 50%; background: #e0a030; opacity: 0.55; }
+@media (prefers-reduced-motion: reduce) { .dv-text, .dv-text.leaving { animation-duration: 1ms; } }

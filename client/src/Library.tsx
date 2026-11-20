@@ -6,6 +6,8 @@ import { ConfirmDialog } from "./ConfirmDialog";
 interface Props {
   presentations: Presentation[];
   selectedId: number | null;
+  /** The presentation currently on the displays (gets a LIVE badge). */
+  livePresentationId: number | null;
   onSelect: (id: number) => void;
   onCreate: (name: string) => Promise<void>;
   onRename: (id: number, name: string) => Promise<void>;
@@ -14,7 +16,7 @@ interface Props {
 }
 
 /** Left column: list of presentations with create / rename / duplicate / delete. */
-export function Library({ presentations, selectedId, onSelect, onCreate, onRename, onDuplicate, onDelete }: Props) {
+export function Library({ presentations, selectedId, livePresentationId, onSelect, onCreate, onRename, onDuplicate, onDelete }: Props) {
   const [newName, setNewName] = useState("");
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -73,7 +75,10 @@ export function Library({ presentations, selectedId, onSelect, onCreate, onRenam
               />
             ) : (
               <button type="button" className="select" onClick={() => onSelect(p.id)} aria-current={p.id === selectedId}>
-                <span className="name">{p.name}</span>
+                <span className="name">
+                  {p.name}
+                  {p.id === livePresentationId && <span className="live-badge">LIVE</span>}
+                </span>
                 <span className="count">{p.slideCount} slide{p.slideCount === 1 ? "" : "s"}</span>
               </button>
             )}

@@ -1,3 +1,5 @@
+import { mergeSettings, normalizeSettings } from "../shared/types.js";
+import type { PresentationSettings, Video } from "../shared/types.js";
 import type { Db } from "./db.js";
 
 export interface Presentation {
@@ -17,7 +19,31 @@ export interface Slide {
 
 export interface PresentationDetail extends Presentation {
   slides: Slide[];
+  settings: PresentationSettings;
 }
+
+/** A video row plus the on-disk filename (the filename is never sent to clients). */
+export interface VideoRecord extends Video {
+  filename: string;
+}
+
+interface VideoRow {
+  id: number;
+  name: string;
+  filename: string;
+  mime: string;
+  size: number;
+  created_at: string;
+}
+const toVideo = (r: VideoRow): VideoRecord => ({
+  id: r.id,
+  name: r.name,
+  filename: r.filename,
+  mime: r.mime,
+  size: r.size,
+  url: `/media/${r.id}`,
+  createdAt: r.created_at,
+});
 
 interface PresentationRow {
   id: number;
@@ -52,6 +78,14 @@ const PRESENTATION_SELECT = `
          (SELECT COUNT(*) FROM slides s WHERE s.presentation_id = p.id) AS slide_count
   FROM presentations p`;
 
+function safeParse(json: string): unknown {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return {}; // corrupt settings fall back to defaults instead of crashing
+  }
+}
+
 /** All data access in one place so routes stay thin and tests can run against ":memory:". */
 export function createRepo(db: Db) {
   const touch = db.prepare("UPDATE presentations SET updated_at = datetime('now') WHERE id = ?");
@@ -71,6 +105,16 @@ export function createRepo(db: Db) {
   function getSlide(id: number): Slide | undefined {
     const row = db.prepare("SELECT * FROM slides WHERE id = ?").get(id) as SlideRow | undefined;
     return row && toSlide(row);
+  }
+
+  function getSettings(id: number): PresentationSettings | undefined {
+    const row = db.prepare("SELECT settings FROM presentations WHERE id = ?").get(id) as { settings: string } | undefined;
+    return row && normalizeSettings(safeParse(row.settings));
+  }
+
+  function getVideo(id: number): VideoRecord | undefined {
+    const row = db.prepare("SELECT * FROM videos WHERE id = ?").get(id) as VideoRow | undefined;
+    return row && toVideo(row);
   }
 
   /** Rewrite positions 0..n-1 so they stay contiguous after deletes. */
@@ -94,7 +138,64 @@ export function createRepo(db: Db) {
 
     getPresentationDetail(id: number): PresentationDetail | undefined {
       const p = getPresentation(id);
-      return p && { ...p, slides: listSlides(id) };
+      return p && { ...p, slides: listSlides(id), settings: getSettings(id)! };
+    },
+
+    listSlides,
+    getSlide,
+    getSettings,
+
+    /** Merge a partial settings patch into the stored settings (invalid values are corrected). */
+    updateSettings(id: number, patch: unknown): PresentationSettings | undefined {
+      const current = getSettings(id);
+      if (!current) return undefined;
+      const next = mergeSettings(current, patch);
+      db.prepare("UPDATE presentations SET settings = ?, updated_at = datetime('now') WHERE id = ?").run(
+        JSON.stringify(next),
+        id,
+      );
+      return next;
+    },
+
+    // ---- videos ----
+    listVideos(): VideoRecord[] {
+      return (db.prepare("SELECT * FROM videos ORDER BY name COLLATE NOCASE, id").all() as VideoRow[]).map(toVideo);
+    },
+    getVideo,
+    addVideo(v: { name: string; filename: string; mime: string; size: number }): VideoRecord {
+      const info = db
+        .prepare("INSERT INTO videos (name, filename, mime, size) VALUES (?, ?, ?, ?)")
+        .run(v.name, v.filename, v.mime, v.size);
+      return getVideo(Number(info.lastInsertRowid))!;
+    },
+    renameVideo(id: number, name: string): VideoRecord | undefined {
+      return db.prepare("UPDATE videos SET name = ? WHERE id = ?").run(name, id).changes ? getVideo(id) : undefined;
+    },
+    /** Deletes the row and un-selects the video everywhere it was used. Returns the row so the caller can remove the file. */
+    deleteVideo(id: number): VideoRecord | undefined {
+      return db.transaction(() => {
+        const v = getVideo(id);
+        if (!v) return undefined;
+        const rows = db.prepare("SELECT id, settings FROM presentations").all() as { id: number; settings: string }[];
+        const update = db.prepare("UPDATE presentations SET settings = ? WHERE id = ?");
+        for (const row of rows) {
+          const s = normalizeSettings(safeParse(row.settings));
+          if (s.main.videoId === id) update.run(JSON.stringify({ ...s, main: { ...s.main, videoId: null } }), row.id);
+        }
+        db.prepare("DELETE FROM videos WHERE id = ?").run(id);
+        return v;
+      })();
+    },
+
+    // ---- key/value ----
+    getKv(key: string): string | undefined {
+      return (db.prepare("SELECT value FROM kv WHERE key = ?").get(key) as { value: string } | undefined)?.value;
+    },
+    setKv(key: string, value: string) {
+      db.prepare("INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(
+        key,
+        value,
+      );
     },
 
     createPresentation(name: string): Presentation {

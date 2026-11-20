@@ -10,6 +10,10 @@ export interface Config {
   warnings: string[];
   /** Optional shared password for the control panel/API. Unset = app runs open (local dev). */
   appPassword?: string;
+  /** Largest video upload accepted, in megabytes. */
+  maxVideoMb: number;
+  /** Folder for uploaded videos (inside dataDir, so it lives on the Railway Volume). */
+  videosDir: string;
 }
 
 /**
@@ -37,5 +41,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     );
   }
   const appPassword = env.APP_PASSWORD || undefined;
-  return { port, dataDir, persistent, warnings, appPassword };
+
+  const maxRaw = env.MAX_VIDEO_MB?.trim();
+  const maxVideoMb = maxRaw ? Number(maxRaw) : 500;
+  if (!Number.isFinite(maxVideoMb) || maxVideoMb <= 0) throw new Error(`Invalid MAX_VIDEO_MB: "${maxRaw}"`);
+
+  return { port, dataDir, persistent, warnings, appPassword, maxVideoMb, videosDir: path.join(dataDir, "videos") };
 }

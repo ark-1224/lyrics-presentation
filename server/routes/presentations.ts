@@ -21,7 +21,11 @@ function optionalText(raw: unknown): string | undefined | null {
   return typeof raw === "string" && raw.length <= MAX_TEXT ? raw : null;
 }
 
-export function presentationRoutes(repo: Repo): Router {
+/**
+ * `onChange` is called after every edit that could affect what is on the screens
+ * (rename, slide edits, reorder, settings, delete) so the live state can refresh.
+ */
+export function presentationRoutes(repo: Repo, onChange: () => void): Router {
   const r = Router();
 
   r.get("/presentations", (_req, res) => {
@@ -47,7 +51,18 @@ export function presentationRoutes(repo: Repo): Router {
     if (!name) return void res.status(400).json({ error: `Name is required (max ${MAX_NAME} characters)` });
     const updated = id && repo.renamePresentation(id, name);
     if (!updated) return void res.status(404).json({ error: "Presentation not found" });
+    onChange();
     res.json(updated);
+  });
+
+  // Styling + background video. Send only the fields to change, e.g. {"main": {"fontSize": 9}}.
+  // Invalid values are corrected (clamped / reset to defaults) rather than rejected.
+  r.put("/presentations/:id/settings", (req, res) => {
+    const id = parseId(req.params.id);
+    const settings = id && repo.updateSettings(id, req.body);
+    if (!settings) return void res.status(404).json({ error: "Presentation not found" });
+    onChange();
+    res.json(settings);
   });
 
   r.post("/presentations/:id/duplicate", (req, res) => {
@@ -60,6 +75,7 @@ export function presentationRoutes(repo: Repo): Router {
   r.delete("/presentations/:id", (req, res) => {
     const id = parseId(req.params.id);
     if (!id || !repo.deletePresentation(id)) return void res.status(404).json({ error: "Presentation not found" });
+    onChange();
     res.status(204).end();
   });
 
@@ -70,6 +86,7 @@ export function presentationRoutes(repo: Repo): Router {
     if (lyrics === null || notes === null) return void res.status(400).json({ error: "Text is too long" });
     const slide = id && repo.addSlide(id, lyrics, notes);
     if (!slide) return void res.status(404).json({ error: "Presentation not found" });
+    onChange();
     res.status(201).json(slide);
   });
 
@@ -84,6 +101,7 @@ export function presentationRoutes(repo: Repo): Router {
     if (!slides) {
       return void res.status(409).json({ error: "Slide list is out of date. Reload and try again." });
     }
+    onChange();
     res.json(slides);
   });
 
@@ -94,12 +112,14 @@ export function presentationRoutes(repo: Repo): Router {
     if (lyrics === null || notes === null) return void res.status(400).json({ error: "Text is too long" });
     const slide = id && repo.updateSlide(id, { lyrics, notes });
     if (!slide) return void res.status(404).json({ error: "Slide not found" });
+    onChange();
     res.json(slide);
   });
 
   r.delete("/slides/:id", (req, res) => {
     const id = parseId(req.params.id);
     if (!id || !repo.deleteSlide(id)) return void res.status(404).json({ error: "Slide not found" });
+    onChange();
     res.status(204).end();
   });
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -19,6 +20,9 @@ interface CardProps {
   slide: Slide;
   index: number;
   autoFocus: boolean;
+  /** True when this slide is the one on the displays right now. */
+  isLive: boolean;
+  onShow: (slideId: number) => void;
   onSave: (id: number, patch: { lyrics: string; notes: string }) => Promise<void>;
   onDelete: (slide: Slide) => void;
 }
@@ -27,7 +31,7 @@ interface CardProps {
  * One editable slide. Text is kept in local state so typing never waits on the server;
  * it is saved 0.8 s after the last keystroke, on blur, and when the card goes away.
  */
-function SlideCard({ slide, index, autoFocus, onSave, onDelete }: CardProps) {
+function SlideCard({ slide, index, autoFocus, isLive, onShow, onSave, onDelete }: CardProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: slide.id });
   const [lyrics, setLyrics] = useState(slide.lyrics);
   const [notes, setNotes] = useState(slide.notes);
@@ -72,7 +76,7 @@ function SlideCard({ slide, index, autoFocus, onSave, onDelete }: CardProps) {
   return (
     <li
       ref={setNodeRef}
-      className={`slide-card${isDragging ? " dragging" : ""}`}
+      className={`slide-card${isDragging ? " dragging" : ""}${isLive ? " is-live" : ""}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       <div className="slide-head">
@@ -87,6 +91,10 @@ function SlideCard({ slide, index, autoFocus, onSave, onDelete }: CardProps) {
           ⠿
         </button>
         <span className="slide-number">Slide {index + 1}</span>
+        {isLive && <span className="live-badge">ON SCREEN</span>}
+        <button type="button" className="show-btn" onClick={() => onShow(slide.id)} disabled={isLive} title="Put this slide on the displays">
+          ▶ Show
+        </button>
         <span className={`save-status ${status}`} aria-live="polite">
           {status === "saving" && "Saving…"}
           {status === "saved" && "Saved"}
@@ -133,6 +141,13 @@ interface Props {
   name: string;
   slides: Slide[];
   focusSlideId: number | null;
+  /** Is this presentation the one on the displays, and which of its slides is showing? */
+  isLive: boolean;
+  liveSlideId: number | null;
+  onGoLive: () => void;
+  onShow: (slideId: number) => void;
+  /** Settings controls (background video picker) rendered under the heading. */
+  children?: ReactNode;
   onAdd: () => Promise<void>;
   onSave: (id: number, patch: { lyrics: string; notes: string }) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
@@ -140,7 +155,7 @@ interface Props {
 }
 
 /** Right column: the selected presentation's slides, with add / edit / drag-reorder / delete. */
-export function SlideEditor({ name, slides, focusSlideId, onAdd, onSave, onDelete, onReorder }: Props) {
+export function SlideEditor({ name, slides, focusSlideId, isLive, liveSlideId, onGoLive, onShow, children, onAdd, onSave, onDelete, onReorder }: Props) {
   const [deleting, setDeleting] = useState<Slide | null>(null);
   const sensors = useSensors(
     // A small drag distance stops a normal click on the handle from starting a drag.
@@ -170,10 +185,18 @@ export function SlideEditor({ name, slides, focusSlideId, onAdd, onSave, onDelet
         <span className="muted">
           {slides.length} slide{slides.length === 1 ? "" : "s"}
         </span>
-        <button type="button" className="primary" onClick={() => void onAdd()}>
+        {isLive ? (
+          <span className="live-badge">LIVE</span>
+        ) : (
+          <button type="button" className="go-live" onClick={onGoLive} title="Show this presentation on the displays">
+            ● Go live
+          </button>
+        )}
+        <button type="button" className="primary add-top" onClick={() => void onAdd()}>
           + Add slide
         </button>
       </div>
+      {children}
 
       {slides.length === 0 && <p className="muted empty">No slides yet. Click “Add slide” to start typing lyrics.</p>}
 
@@ -186,6 +209,8 @@ export function SlideEditor({ name, slides, focusSlideId, onAdd, onSave, onDelet
                 slide={slide}
                 index={i}
                 autoFocus={slide.id === focusSlideId}
+                isLive={isLive && slide.id === liveSlideId}
+                onShow={onShow}
                 onSave={onSave}
                 onDelete={requestDelete}
               />

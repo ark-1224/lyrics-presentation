@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ControlPanel } from "./ControlPanel";
+import { DisplayPage } from "./DisplayPage";
 
 // Only three fixed pages, so a simple path switch is enough (no router library needed).
 type Page = "control" | "main" | "singers" | "home";
@@ -14,11 +15,12 @@ function pageFromPath(pathname: string): Page {
 export function App() {
   const page = pageFromPath(window.location.pathname);
   if (page === "control") return <ControlPanel />;
-  return <Placeholder page={page} />;
+  if (page === "main" || page === "singers") return <DisplayPage kind={page} />;
+  return <Home />;
 }
 
-/** Display pages arrive in step (c); until then they just prove routing + health work. */
-function Placeholder({ page }: { page: Page }) {
+/** Landing page at "/": links to the three pages plus the server health. */
+function Home() {
   const [health, setHealth] = useState<string>("checking...");
 
   useEffect(() => {
@@ -31,15 +33,12 @@ function Placeholder({ page }: { page: Page }) {
   return (
     <main className="placeholder">
       <h1>Lyric Presenter</h1>
-      <p>Page: {page}</p>
       <p>Server health: {health}</p>
-      {page === "home" && (
-        <ul>
-          <li><a href="/control">/control</a></li>
-          <li><a href="/display/main">/display/main</a></li>
-          <li><a href="/display/singers">/display/singers</a></li>
-        </ul>
-      )}
+      <ul>
+        <li><a href="/control">Control panel</a></li>
+        <li><a href="/display/main">Main display (video + lyrics)</a></li>
+        <li><a href="/display/singers">Singers display (lyrics only)</a></li>
+      </ul>
     </main>
   );
 }
