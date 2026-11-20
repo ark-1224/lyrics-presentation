@@ -389,7 +389,6 @@ function Workspace({ authRequired, onSignOut }: { authRequired: boolean; onSignO
                 aria-selected={tab === t.id}
                 aria-controls="tab-panel"
                 className={tab === t.id ? "active" : ""}
-                disabled={t.id !== "videos" && !detail}
                 onClick={() => setTab(t.id)}
               >
                 {t.label}
