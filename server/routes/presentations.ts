@@ -1,15 +1,15 @@
 import { Router } from "express";
 import type { Repo } from "../repo.js";
 
-const MAX_NAME = 200;
-const MAX_TEXT = 10_000; // lyrics or notes per slide
+export const MAX_NAME = 200;
+export const MAX_TEXT = 10_000; // lyrics or notes per slide
 
 function parseId(raw: unknown): number | undefined {
   const n = Number(raw);
   return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
-function cleanName(raw: unknown): string | undefined {
+export function cleanName(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
   const name = raw.trim();
   return name.length > 0 && name.length <= MAX_NAME ? name : undefined;

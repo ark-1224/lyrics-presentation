@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import type { Presentation } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { PptxImport } from "./PptxImport";
 
 interface Props {
   presentations: Presentation[];
@@ -10,13 +11,15 @@ interface Props {
   livePresentationId: number | null;
   onSelect: (id: number) => void;
   onCreate: (name: string) => Promise<void>;
+  /** Called after a PowerPoint import created a new presentation. */
+  onImported: (p: Presentation) => void | Promise<void>;
   onRename: (id: number, name: string) => Promise<void>;
   onDuplicate: (id: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 }
 
 /** Left column: list of presentations with create / rename / duplicate / delete. */
-export function Library({ presentations, selectedId, livePresentationId, onSelect, onCreate, onRename, onDuplicate, onDelete }: Props) {
+export function Library({ presentations, selectedId, livePresentationId, onSelect, onCreate, onImported, onRename, onDuplicate, onDelete }: Props) {
   const [newName, setNewName] = useState("");
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -53,6 +56,8 @@ export function Library({ presentations, selectedId, livePresentationId, onSelec
           Create
         </button>
       </form>
+
+      <PptxImport onImported={onImported} />
 
       {presentations.length === 0 && <p className="muted">No presentations yet. Create one above.</p>}
 

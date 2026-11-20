@@ -1,5 +1,5 @@
 // Thin typed wrapper around the REST API. Mirrors server/repo.ts types.
-import type { PresentationSettings, Video } from "../../shared/types";
+import type { ImportRequest, PptxPreview, PresentationSettings, Video } from "../../shared/types";
 
 export type { PresentationSettings, Video };
 
@@ -114,6 +114,27 @@ export const api = {
       xhr.send(form);
     });
   },
+
+  /** Upload a .pptx and get back what was found in it. Nothing is saved yet. */
+  async importPptx(file: File): Promise<PptxPreview> {
+    const form = new FormData();
+    form.append("file", file);
+    let res: Response;
+    try {
+      res = await fetch("/api/import/pptx", { method: "POST", body: form });
+    } catch {
+      throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
+    }
+    if (res.status === 401) onUnauthorized?.();
+    const data = (await res.json().catch(() => null)) as (PptxPreview & { error?: string }) | null;
+    if (!res.ok || !data) {
+      const fallback = res.status === 413 ? "The server rejected the file as too large." : `Import failed (${res.status})`;
+      throw new ApiError(data?.error ?? fallback, res.status);
+    }
+    return data;
+  },
+  /** Create the presentation from the reviewed slides. */
+  importPresentation: (req: ImportRequest) => request<Presentation>("POST", "/api/import", req),
 
   addSlide: (presentationId: number) => request<Slide>("POST", `/api/presentations/${presentationId}/slides`, {}),
   updateSlide: (id: number, patch: { lyrics?: string; notes?: string }) => request<Slide>("PATCH", `/api/slides/${id}`, patch),

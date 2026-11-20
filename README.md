@@ -3,8 +3,9 @@
 Lyric presentation web app for church/event use. One operator controls everything from a
 browser; two display windows (Main with video, Singers with lyrics only) stay in sync.
 
-> Status: steps **(a)** setup/deploy/health check, **(b)** control panel, **(c)** real-time sync
-> with the two displays, and **(d)** video manager + styling controls are done. PPTX import comes next.
+> Status: all five build steps are done: **(a)** setup/deploy/health check, **(b)** control panel,
+> **(c)** real-time sync with the two displays, **(d)** video manager + styling controls, and
+> **(e)** PowerPoint import. The full Railway checklist and final summary are still to come.
 
 ## Stack
 
@@ -31,6 +32,23 @@ How it works: the server keeps the one true state (which presentation, which sli
 styling) and pushes it to every window over a WebSocket at `/ws`. A display that refreshes or joins
 late gets the full state immediately; if its connection drops it keeps showing the last slide and
 reconnects by itself. Private notes are never sent to the display windows.
+
+## Importing from PowerPoint
+
+Click **Import PowerPoint (.pptx)…** under the presentation list and pick a file. You get a review
+screen before anything is saved:
+
+- every slide becomes one lyric slide, in slideshow order; the slide's text is the lyrics and its
+  speaker notes become the private notes;
+- only text and notes are read. Pictures, shapes, animations and styling are ignored, as are slide
+  numbers, dates and footers;
+- slides with no text are listed as **Empty** and unticked (skipped) by default; slides hidden in
+  PowerPoint are flagged **Hidden**. Tick or untick any slide, edit any text, and rename the
+  presentation, then click **Import**. Cancel creates nothing.
+
+Not supported: old binary `.ppt` files and password-protected files (the message tells you to
+re-save as `.pptx` in PowerPoint). Files over 50 MB, over 500 slides, or that expand to an
+unreasonable size are refused.
 
 ## Styling and videos
 
@@ -71,7 +89,8 @@ npm run build
 npm start                # everything on http://localhost:3000
 ```
 
-Other scripts: `npm run lint`, `npm test`, `npm run typecheck`.
+Other scripts: `npm run lint`, `npm test`, `npm run typecheck`, and `npm run fixtures` (rebuilds the
+sample PowerPoint file `tests/fixtures/sample.pptx` used by the parser tests).
 
 ## Environment variables
 

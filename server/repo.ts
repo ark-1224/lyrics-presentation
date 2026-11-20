@@ -213,6 +213,16 @@ export function createRepo(db: Db) {
       return getPresentation(Number(info.lastInsertRowid))!;
     },
 
+    /** Create a presentation with all its slides at once (all-or-nothing). */
+    importPresentation(name: string, slides: { lyrics: string; notes: string }[]): Presentation {
+      return db.transaction(() => {
+        const id = Number(db.prepare("INSERT INTO presentations (name) VALUES (?)").run(name).lastInsertRowid);
+        const insert = db.prepare("INSERT INTO slides (presentation_id, position, lyrics, notes) VALUES (?, ?, ?, ?)");
+        slides.forEach((s, i) => insert.run(id, i, s.lyrics, s.notes));
+        return getPresentation(id)!;
+      })();
+    },
+
     renamePresentation(id: number, name: string): Presentation | undefined {
       const info = db
         .prepare("UPDATE presentations SET name = ?, updated_at = datetime('now') WHERE id = ?")

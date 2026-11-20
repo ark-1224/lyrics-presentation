@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkVideoFile, formatBytes } from "../client/src/format";
+import { checkPptxFile, checkVideoFile, formatBytes } from "../client/src/format";
 import { reconnectDelay } from "../client/src/socket";
 import { isTypingTarget, shortcutFor } from "../client/src/shortcuts";
 import { textStyle } from "../client/src/DisplayView";
@@ -88,5 +88,17 @@ describe("upload checks", () => {
     const tooBig = checkVideoFile({ name: "huge.mp4", size: 600 * 1024 * 1024 }, 500);
     expect(tooBig).toContain("600.0 MB");
     expect(tooBig).toContain("500 MB limit");
+  });
+});
+
+describe("PowerPoint file check", () => {
+  it("accepts .pptx files in any letter case", () => {
+    expect(checkPptxFile({ name: "songs.pptx", size: 1000 })).toBeNull();
+    expect(checkPptxFile({ name: "SONGS.PPTX", size: 1000 })).toBeNull();
+  });
+  it("explains old .ppt files, other types and oversized files", () => {
+    expect(checkPptxFile({ name: "old.ppt", size: 10 })).toMatch(/old-format \.ppt.*Save As/);
+    expect(checkPptxFile({ name: "notes.docx", size: 10 })).toMatch(/isn't a PowerPoint/);
+    expect(checkPptxFile({ name: "huge.pptx", size: 80 * 1024 * 1024 })).toMatch(/80\.0 MB.*50 MB limit/);
   });
 });

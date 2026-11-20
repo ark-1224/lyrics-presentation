@@ -7,6 +7,7 @@ import type { Config } from "./config.js";
 import type { Db } from "./db.js";
 import { createLive } from "./live.js";
 import { createRepo } from "./repo.js";
+import { importRoutes } from "./routes/import.js";
 import { presentationRoutes } from "./routes/presentations.js";
 import { mediaRoute, videoRoutes } from "./routes/videos.js";
 
@@ -65,6 +66,7 @@ export function createApp(config: Config, services: Services) {
   api.use(auth.requireAuth);
   api.use(presentationRoutes(repo, live.refresh));
   api.use(videoRoutes(repo, config, live.refresh));
+  api.use(importRoutes(repo, config));
   api.use((_req, res) => void res.status(404).json({ error: "Not found" }));
   app.use("/api", api);
 

@@ -180,3 +180,34 @@ export interface Video {
   /** How many presentations use this as their Main background (only set in the video list). */
   usedBy?: number;
 }
+
+// ---- PPTX import ----------------------------------------------------------------------------
+
+/** Largest .pptx accepted for import. Checked in the browser and again on the server. */
+export const MAX_PPTX_MB = 50;
+
+/** One slide found in an uploaded PowerPoint file, shown on the review screen before saving. */
+export interface PptxPreviewSlide {
+  /** Position in the original file, starting at 1 (matches the slide number in PowerPoint). */
+  number: number;
+  lyrics: string;
+  /** The slide's speaker notes, to be saved as private notes. */
+  notes: string;
+  /** No text on the slide (e.g. only a picture). Skipped by default on the review screen. */
+  empty: boolean;
+  /** Marked "hidden" in PowerPoint (not shown in a normal slideshow). */
+  hidden: boolean;
+}
+
+export interface PptxPreview {
+  fileName: string;
+  /** The file name without ".pptx", offered as the presentation name. */
+  suggestedName: string;
+  slides: PptxPreviewSlide[];
+}
+
+/** What the review screen sends back to create the presentation. */
+export interface ImportRequest {
+  name: string;
+  slides: { lyrics: string; notes: string }[];
+}

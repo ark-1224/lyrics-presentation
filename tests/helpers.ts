@@ -18,6 +18,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     warnings: [],
     maxVideoMb: 500,
     videosDir: path.join(dataDir, "videos"),
+    maxPptxMb: 50,
     ...overrides,
   };
 }

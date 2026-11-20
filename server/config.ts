@@ -1,4 +1,5 @@
 import path from "node:path";
+import { MAX_PPTX_MB } from "../shared/types.js";
 
 export interface Config {
   port: number;
@@ -14,6 +15,8 @@ export interface Config {
   maxVideoMb: number;
   /** Folder for uploaded videos (inside dataDir, so it lives on the Railway Volume). */
   videosDir: string;
+  /** Largest .pptx accepted for import, in megabytes (read into memory, so kept modest). */
+  maxPptxMb: number;
 }
 
 /**
@@ -46,5 +49,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const maxVideoMb = maxRaw ? Number(maxRaw) : 500;
   if (!Number.isFinite(maxVideoMb) || maxVideoMb <= 0) throw new Error(`Invalid MAX_VIDEO_MB: "${maxRaw}"`);
 
-  return { port, dataDir, persistent, warnings, appPassword, maxVideoMb, videosDir: path.join(dataDir, "videos") };
+  return { port, dataDir, persistent, warnings, appPassword, maxVideoMb, videosDir: path.join(dataDir, "videos"), maxPptxMb: MAX_PPTX_MB };
 }

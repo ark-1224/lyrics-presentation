@@ -369,6 +369,11 @@ function Workspace({ authRequired, onSignOut }: { authRequired: boolean; onSignO
           livePresentationId={live?.presentationId ?? null}
           onSelect={setSelectedId}
           onCreate={createPresentation}
+          onImported={async (p) => {
+            await refreshList();
+            setSelectedId(p.id);
+            setTab("slides");
+          }}
           onRename={renamePresentation}
           onDuplicate={duplicatePresentation}
           onDelete={deletePresentation}
