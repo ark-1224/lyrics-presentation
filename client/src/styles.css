@@ -330,3 +330,44 @@ dialog.import-dialog[open] { display: flex; flex-direction: column; }
 .jump-list button .txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jump-list button.current { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .jump-list button.current .num { color: inherit; }
+
+/* --- song sections (Verse / Chorus / Bridge ...) --- */
+.sec-intro { --sec: #64748b; }
+.sec-verse { --sec: #3b82f6; }
+.sec-pre-chorus { --sec: #14b8a6; }
+.sec-chorus { --sec: #f59e0b; }
+.sec-bridge { --sec: #a855f7; }
+.sec-tag { --sec: #ec4899; }
+.sec-outro { --sec: #84cc16; }
+
+/* the row of jump buttons in the Live panel */
+.section-jump { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.section-jump-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-right: 0.15rem; }
+.section-hint { font-size: 0.85rem; }
+.section-jump button {
+  --sec: var(--muted);
+  min-inline-size: 3rem;
+  min-block-size: 2.25rem;
+  font-weight: 600;
+  border: 2px solid color-mix(in srgb, var(--sec) 60%, var(--text));
+  background: color-mix(in srgb, var(--sec) 16%, var(--bg));
+}
+.section-jump button .count { font-weight: 400; color: var(--muted); }
+/* the section that is on screen now: styled from the ARIA state, with a high-contrast inner ring */
+.section-jump button[aria-current="true"] {
+  background: color-mix(in srgb, var(--sec) 50%, var(--surface));
+  box-shadow: inset 0 0 0 2px var(--text);
+}
+.section-jump button[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+@media (pointer: coarse) { .section-jump button { min-block-size: 3rem; } }
+@media (hover: hover) { .section-jump button:not([aria-disabled="true"]):hover { background: color-mix(in srgb, var(--sec) 32%, var(--bg)); } }
+@media (prefers-reduced-motion: no-preference) { .section-jump button { transition: background-color 120ms ease; } }
+@media (forced-colors: active) {
+  .section-jump button[aria-current="true"] { background: Highlight; color: HighlightText; forced-color-adjust: none; }
+}
+
+/* small coloured label in the jump list and on slide cards */
+.sec-chip { flex: none; font-size: 0.7rem; font-weight: 700; padding: 0.05rem 0.45rem; border-radius: 4px; color: var(--text); border: 1px solid color-mix(in srgb, var(--sec) 60%, var(--text)); background: color-mix(in srgb, var(--sec) 22%, var(--surface)); }
+.slide-card.has-section { border-left: 5px solid var(--sec); }
+.section-select { font: inherit; font-size: 0.8rem; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.15rem 0.35rem; }
+.slide-card.has-section .section-select { border-color: color-mix(in srgb, var(--sec) 60%, var(--text)); background: color-mix(in srgb, var(--sec) 14%, var(--surface)); }

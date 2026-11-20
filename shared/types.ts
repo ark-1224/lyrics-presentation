@@ -120,6 +120,25 @@ export function mergeSettings(current: PresentationSettings, patch: unknown): Pr
   });
 }
 
+// ---- Song sections (Verse, Chorus, Bridge...) ----------------------------------------------
+
+/** The labels a slide can carry. The operator sets one per slide; the Live panel then offers a jump button per label. */
+export const SECTIONS = [
+  { key: "intro", label: "Intro" },
+  { key: "verse", label: "Verse" },
+  { key: "pre-chorus", label: "Pre-chorus" },
+  { key: "chorus", label: "Chorus" },
+  { key: "bridge", label: "Bridge" },
+  { key: "tag", label: "Tag" },
+  { key: "outro", label: "Outro" },
+] as const;
+
+export type SectionKey = (typeof SECTIONS)[number]["key"];
+/** "" means the slide has no section. */
+export type SlideSection = SectionKey | "";
+
+export const isSectionKey = (v: unknown): v is SectionKey => SECTIONS.some((s) => s.key === v);
+
 // ---- Live state -----------------------------------------------------------------------------
 
 /** Everything a display window needs to draw itself. Never contains private notes. */
@@ -143,7 +162,7 @@ export interface LiveInfo {
   nextLyrics: string | null;
   notes: string;
   /** Every slide of the live presentation (id + first line), for the "jump to slide" list. */
-  slides: { id: number; text: string }[];
+  slides: { id: number; text: string; section: SlideSection }[];
 }
 
 /** How many windows of each kind are currently connected. */
@@ -162,7 +181,9 @@ export type ClientCommand =
   | { type: "next" }
   | { type: "prev" }
   | { type: "blank"; value?: boolean } // value omitted = toggle
-  | { type: "goto"; slideId: number };
+  | { type: "goto"; slideId: number }
+  /** Jump to the next slide labelled with this section after the current one, wrapping around. */
+  | { type: "section"; section: SectionKey };
 
 /** Server -> clients. */
 export type ServerMessage =

@@ -1,5 +1,5 @@
-import { mergeSettings, normalizeSettings } from "../shared/types.js";
-import type { PresentationSettings, Video } from "../shared/types.js";
+import { isSectionKey, mergeSettings, normalizeSettings } from "../shared/types.js";
+import type { PresentationSettings, SlideSection, Video } from "../shared/types.js";
 import type { Db } from "./db.js";
 
 export interface Presentation {
@@ -15,6 +15,7 @@ export interface Slide {
   position: number;
   lyrics: string;
   notes: string;
+  section: SlideSection;
 }
 
 export interface PresentationDetail extends Presentation {
@@ -57,6 +58,7 @@ interface SlideRow {
   position: number;
   lyrics: string;
   notes: string;
+  section: string;
 }
 
 const toPresentation = (r: PresentationRow): Presentation => ({
@@ -71,6 +73,8 @@ const toSlide = (r: SlideRow): Slide => ({
   position: r.position,
   lyrics: r.lyrics,
   notes: r.notes,
+  // Anything that isn't a known section (e.g. from a future version) is treated as "no section".
+  section: isSectionKey(r.section) ? r.section : "",
 });
 
 const PRESENTATION_SELECT = `
@@ -239,8 +243,8 @@ export function createRepo(db: Db) {
           .run(`${src.name} (copy)`, id);
         const newId = Number(copy.lastInsertRowid);
         db.prepare(
-          `INSERT INTO slides (presentation_id, position, lyrics, notes)
-           SELECT ?, position, lyrics, notes FROM slides WHERE presentation_id = ?`,
+          `INSERT INTO slides (presentation_id, position, lyrics, notes, section)
+           SELECT ?, position, lyrics, notes, section FROM slides WHERE presentation_id = ?`,
         ).run(newId, id);
         return getPresentation(newId);
       })();
@@ -264,13 +268,14 @@ export function createRepo(db: Db) {
       })();
     },
 
-    updateSlide(id: number, patch: { lyrics?: string; notes?: string }): Slide | undefined {
+    updateSlide(id: number, patch: { lyrics?: string; notes?: string; section?: SlideSection }): Slide | undefined {
       return db.transaction(() => {
         const cur = getSlide(id);
         if (!cur) return undefined;
-        db.prepare("UPDATE slides SET lyrics = ?, notes = ? WHERE id = ?").run(
+        db.prepare("UPDATE slides SET lyrics = ?, notes = ?, section = ? WHERE id = ?").run(
           patch.lyrics ?? cur.lyrics,
           patch.notes ?? cur.notes,
+          patch.section ?? cur.section,
           id,
         );
         touch.run(cur.presentationId);

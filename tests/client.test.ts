@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { checkPptxFile, checkVideoFile, formatBytes } from "../client/src/format";
+import { sectionButtons, sectionLabel } from "../client/src/sections";
 import { reconnectDelay } from "../client/src/socket";
 import { isTypingTarget, shortcutFor } from "../client/src/shortcuts";
 import { textStyle } from "../client/src/DisplayView";
 import { DEFAULT_SETTINGS } from "../shared/types";
+import type { SlideSection } from "../shared/types";
 
 describe("keyboard shortcuts", () => {
   it("maps keys to live actions", () => {
@@ -100,5 +102,31 @@ describe("PowerPoint file check", () => {
     expect(checkPptxFile({ name: "old.ppt", size: 10 })).toMatch(/old-format \.ppt.*Save As/);
     expect(checkPptxFile({ name: "notes.docx", size: 10 })).toMatch(/isn't a PowerPoint/);
     expect(checkPptxFile({ name: "huge.pptx", size: 80 * 1024 * 1024 })).toMatch(/80\.0 MB.*50 MB limit/);
+  });
+});
+
+describe("section buttons", () => {
+  const slides = (...sections: string[]) => sections.map((section) => ({ section })) as { section: SlideSection }[];
+
+  it("makes one button per section used, in the order they first appear", () => {
+    expect(sectionButtons(slides("verse", "chorus", "verse", "chorus", "bridge", "chorus", ""))).toEqual([
+      { key: "verse", label: "Verse", count: 2 },
+      { key: "chorus", label: "Chorus", count: 3 },
+      { key: "bridge", label: "Bridge", count: 1 },
+    ]);
+  });
+
+  it("makes no buttons when no slide has a section", () => {
+    expect(sectionButtons(slides("", "", ""))).toEqual([]);
+    expect(sectionButtons([])).toEqual([]);
+  });
+
+  it("follows the song's own order, not the dropdown's", () => {
+    expect(sectionButtons(slides("bridge", "intro", "pre-chorus")).map((b) => b.label)).toEqual(["Bridge", "Intro", "Pre-chorus"]);
+  });
+
+  it("has a readable label for every section and none for 'no section'", () => {
+    expect(sectionLabel("pre-chorus")).toBe("Pre-chorus");
+    expect(sectionLabel("")).toBe("");
   });
 });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { mergeSettings } from "../../shared/types";
-import type { DisplayState, LiveInfo, Presence } from "../../shared/types";
+import type { DisplayState, LiveInfo, Presence, SlideSection } from "../../shared/types";
 import { ApiError, api, setUnauthorizedHandler } from "./api";
 import type { DeepPartialSettings, Presentation, PresentationDetail, SessionInfo, Slide, Video } from "./api";
 import { Library } from "./Library";
@@ -243,6 +243,18 @@ function Workspace({ authRequired, onSignOut }: { authRequired: boolean; onSignO
     }
   }
 
+  /** Label a slide (Verse, Chorus, Bridge...). Shown at once; put back if the save fails. */
+  async function setSlideSection(id: number, section: SlideSection) {
+    const before = detail?.slides.find((s) => s.id === id)?.section ?? "";
+    setSlides((ss) => ss.map((s) => (s.id === id ? { ...s, section } : s)));
+    try {
+      await api.updateSlide(id, { section });
+    } catch (err) {
+      setSlides((ss) => ss.map((s) => (s.id === id ? { ...s, section: before } : s)));
+      fail(err);
+    }
+  }
+
   async function reorderSlides(slideIds: number[]) {
     if (!detail) return;
     const before = detail.slides;
@@ -433,6 +445,7 @@ function Workspace({ authRequired, onSignOut }: { authRequired: boolean; onSignO
                 onSave={saveSlide}
                 onDelete={deleteSlide}
                 onReorder={reorderSlides}
+                onSetSection={setSlideSection}
               />
             )}
           </div>

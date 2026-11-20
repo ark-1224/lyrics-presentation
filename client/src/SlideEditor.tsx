@@ -11,6 +11,8 @@ import {
 import type { DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { SECTIONS } from "../../shared/types";
+import type { SlideSection } from "../../shared/types";
 import type { Slide } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -23,6 +25,7 @@ interface CardProps {
   /** True when this slide is the one on the displays right now. */
   isLive: boolean;
   onShow: (slideId: number) => void;
+  onSetSection: (slideId: number, section: SlideSection) => void;
   onSave: (id: number, patch: { lyrics: string; notes: string }) => Promise<void>;
   onDelete: (slide: Slide) => void;
 }
@@ -31,7 +34,7 @@ interface CardProps {
  * One editable slide. Text is kept in local state so typing never waits on the server;
  * it is saved 0.8 s after the last keystroke, on blur, and when the card goes away.
  */
-function SlideCard({ slide, index, autoFocus, isLive, onShow, onSave, onDelete }: CardProps) {
+function SlideCard({ slide, index, autoFocus, isLive, onShow, onSetSection, onSave, onDelete }: CardProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: slide.id });
   const [lyrics, setLyrics] = useState(slide.lyrics);
   const [notes, setNotes] = useState(slide.notes);
@@ -76,7 +79,7 @@ function SlideCard({ slide, index, autoFocus, isLive, onShow, onSave, onDelete }
   return (
     <li
       ref={setNodeRef}
-      className={`slide-card${isDragging ? " dragging" : ""}${isLive ? " is-live" : ""}`}
+      className={`slide-card${isDragging ? " dragging" : ""}${isLive ? " is-live" : ""}${slide.section ? ` has-section sec-${slide.section}` : ""}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       <div className="slide-head">
@@ -92,6 +95,20 @@ function SlideCard({ slide, index, autoFocus, isLive, onShow, onSave, onDelete }
         </button>
         <span className="slide-number">Slide {index + 1}</span>
         {isLive && <span className="live-badge">ON SCREEN</span>}
+        <select
+          className="section-select"
+          value={slide.section}
+          aria-label={`Section of slide ${index + 1}`}
+          title="Label this slide so you can jump to it from the Live panel"
+          onChange={(e) => onSetSection(slide.id, e.target.value as SlideSection)}
+        >
+          <option value="">No section</option>
+          {SECTIONS.map((s) => (
+            <option key={s.key} value={s.key}>
+              {s.label}
+            </option>
+          ))}
+        </select>
         <button type="button" className="show-btn" onClick={() => onShow(slide.id)} disabled={isLive} title="Put this slide on the displays">
           ▶ Show
         </button>
@@ -146,6 +163,7 @@ interface Props {
   liveSlideId: number | null;
   onGoLive: () => void;
   onShow: (slideId: number) => void;
+  onSetSection: (slideId: number, section: SlideSection) => void;
   /** Settings controls (background video picker) rendered under the heading. */
   children?: ReactNode;
   onAdd: () => Promise<void>;
@@ -155,7 +173,7 @@ interface Props {
 }
 
 /** Right column: the selected presentation's slides, with add / edit / drag-reorder / delete. */
-export function SlideEditor({ name, slides, focusSlideId, isLive, liveSlideId, onGoLive, onShow, children, onAdd, onSave, onDelete, onReorder }: Props) {
+export function SlideEditor({ name, slides, focusSlideId, isLive, liveSlideId, onGoLive, onShow, onSetSection, children, onAdd, onSave, onDelete, onReorder }: Props) {
   const [deleting, setDeleting] = useState<Slide | null>(null);
   const sensors = useSensors(
     // A small drag distance stops a normal click on the handle from starting a drag.
@@ -211,6 +229,7 @@ export function SlideEditor({ name, slides, focusSlideId, isLive, liveSlideId, o
                 autoFocus={slide.id === focusSlideId}
                 isLive={isLive && slide.id === liveSlideId}
                 onShow={onShow}
+                onSetSection={onSetSection}
                 onSave={onSave}
                 onDelete={requestDelete}
               />

@@ -51,6 +51,10 @@ const MIGRATIONS: string[] = [
     value TEXT NOT NULL
   );
   `,
+  `
+  -- Optional song section of a slide (verse, chorus, bridge...). '' = none.
+  ALTER TABLE slides ADD COLUMN section TEXT NOT NULL DEFAULT '';
+  `,
 ];
 
 function migrate(db: Db) {

@@ -1,5 +1,6 @@
 import type http from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
+import { isSectionKey } from "../shared/types.js";
 import type { ClientCommand, Presence, Role, ServerMessage } from "../shared/types.js";
 import type { Auth } from "./auth.js";
 import type { Live } from "./live.js";
@@ -36,6 +37,8 @@ export function parseCommand(raw: string): ClientCommand | undefined {
       return typeof m.value === "boolean" ? { type: "blank", value: m.value } : { type: "blank" };
     case "goto":
       return isId(m.slideId) ? { type: "goto", slideId: m.slideId } : undefined;
+    case "section":
+      return isSectionKey(m.section) ? { type: "section", section: m.section } : undefined;
     case "show":
       if (!isId(m.presentationId)) return undefined;
       return isId(m.slideId)

@@ -77,7 +77,7 @@ export function createLive(repo: Repo) {
       blank: state.blank,
       nextLyrics: slides[index + 1]?.lyrics ?? null,
       notes: slide?.notes ?? "",
-      slides: slides.map((s) => ({ id: s.id, text: firstLine(s.lyrics) })),
+      slides: slides.map((s) => ({ id: s.id, text: firstLine(s.lyrics), section: s.section })),
     };
 
     const nextDisplayJson = JSON.stringify(nextDisplay);
@@ -131,6 +131,17 @@ export function createLive(repo: Repo) {
         const slide = repo.getSlide(cmd.slideId);
         if (slide?.presentationId !== state.presentationId) return;
         state = { ...state, slideId: slide.id };
+        break;
+      }
+      case "section": {
+        if (state.presentationId === null) return;
+        const slides = repo.listSlides(state.presentationId);
+        const here = slides.find((s) => s.id === state.slideId)?.position ?? -1;
+        const matches = slides.filter((s) => s.section === cmd.section);
+        // The next slide of that section after the current one; after the last, wrap to the first.
+        const target = matches.find((s) => s.position > here) ?? matches[0];
+        if (!target) return; // nothing is labelled with this section: leave the screens alone
+        state = { ...state, slideId: target.id };
         break;
       }
       case "blank":

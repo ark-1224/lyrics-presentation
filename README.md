@@ -24,10 +24,14 @@ drag-reorder and delete slides (lyrics plus private notes). Edits autosave. Data
    browser windows, drag each onto its own TV (extended display) and click **Click to start** in
    each (that click is what lets the browser go fullscreen). The control panel shows a green
    light for each connected display.
-2. In the control panel pick a presentation and click **Go live**, or click **▶ Show** on any slide.
+2. In the control panel pick a presentation and click **Go live**, or click **â–¶ Show** on any slide.
    Once it is live, the **Jump to slide** list in the Live panel shows every slide with its first line:
    click any one to go straight there, in any order (slide 1 to slide 5, then back to slide 2, and so on).
-3. Run the show with **Next / Previous / Blank**, or the keyboard: **→ ↓ Space** next, **← ↑**
+   **Sections:** on the Slides tab, give a slide a section (Verse, Chorus, Bridge, plus Intro, Pre-chorus, Tag,
+   Outro) with the dropdown on its card. The Live panel then shows one button per section used in the song:
+   press **Chorus** to jump to the next chorus after the current slide (pressing again goes to the one after,
+   then wraps around), **Bridge** for the bridge, and so on.
+3. Run the show with **Next / Previous / Blank**, or the keyboard: **â†’ â†“ Space** next, **â† â†‘**
    previous, **B** blank. Shortcuts pause while you are typing in a text box (press **Esc** to leave it).
 
 How it works: the server keeps the one true state (which presentation, which slide, blank on/off,
@@ -37,7 +41,7 @@ reconnects by itself. Private notes are never sent to the display windows.
 
 ## Importing from PowerPoint
 
-Click **Import PowerPoint (.pptx)…** under the presentation list and pick a file. You get a review
+Click **Import PowerPoint (.pptx)â€¦** under the presentation list and pick a file. You get a review
 screen before anything is saved:
 
 - every slide becomes one lyric slide, in slideshow order; the slide's text is the lyrics and its
@@ -56,7 +60,7 @@ unreasonable size are refused.
 
 The control panel has three tabs next to the presentation list:
 
-- **Slides**: edit lyrics and private notes, drag to reorder, **▶ Show** to put a slide on screen.
+- **Slides**: edit lyrics and private notes, drag to reorder, **â–¶ Show** to put a slide on screen.
 - **Style**: per presentation, separately for the Main and Singers displays: font, text size, text
   color, alignment, vertical position, and outline/shadow strength (to keep text readable over a
   bright video). Singers also has a background color (default black). Every change shows in a
@@ -71,7 +75,7 @@ The control panel has three tabs next to the presentation list:
 ## Turning on the password
 
 By default the app is open, which is fine on your own laptop. For a public Railway URL, set the
-`APP_PASSWORD` environment variable (Railway: service **Variables** tab → add `APP_PASSWORD`).
+`APP_PASSWORD` environment variable (Railway: service **Variables** tab â†’ add `APP_PASSWORD`).
 The control panel then asks for it, and every API call except `/healthz` is refused without it.
 The login is remembered for 30 days in that browser. Changing the password signs everyone out.
 Leave `APP_PASSWORD` unset locally to run without a login.
@@ -117,11 +121,11 @@ otherwise. Railway uses it to decide whether a deploy is healthy (configured in 
 ## Deploy to Railway (summary, full checklist comes at the end)
 
 1. Push this repo to GitHub (branch `main`).
-2. In Railway: **New Project → Deploy from GitHub repo** and pick the repo. `railway.json`
+2. In Railway: **New Project â†’ Deploy from GitHub repo** and pick the repo. `railway.json`
    tells Railway to build the `Dockerfile` and use `/healthz` as the health check.
 3. Add a **Volume** to the service and mount it at `/data`. Railway then provides
    `RAILWAY_VOLUME_MOUNT_PATH=/data` and the app uses it automatically. Without a volume the app
    logs a warning, because data would be lost on each redeploy.
-4. Under **Settings → Networking**, generate a public domain.
+4. Under **Settings â†’ Networking**, generate a public domain.
 
 No secrets are committed. Set variables such as `APP_PASSWORD` in Railway's **Variables** tab, not in the repo.

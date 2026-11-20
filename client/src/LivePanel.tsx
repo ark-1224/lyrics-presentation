@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { ClientCommand, DisplayState, LiveInfo, Presence } from "../../shared/types";
 import { DisplayView } from "./DisplayView";
+import { sectionButtons, sectionLabel } from "./sections";
 import { SHORTCUT_HELP } from "./shortcuts";
 
 interface Props {
@@ -53,12 +54,46 @@ function JumpList({ live, enabled, send }: { live: LiveInfo; enabled: boolean; s
                 onClick={() => send({ type: "goto", slideId: s.id })}
               >
                 <span className="num">{i + 1}</span>
+                {s.section && <span className={`sec-chip sec-${s.section}`}>{sectionLabel(s.section)}</span>}
                 <span className="txt">{s.text || "(empty slide)"}</span>
               </button>
             </li>
           );
         })}
       </ol>
+    </div>
+  );
+}
+
+/**
+ * One button per song section (Verse, Chorus, Bridge...) used in the live presentation.
+ * Pressing one jumps to the next slide with that label after the current slide, then wraps around,
+ * so repeated presses walk through a repeating chorus. The button for the section on screen is marked.
+ */
+function SectionButtons({ live, enabled, send }: { live: LiveInfo; enabled: boolean; send: (cmd: ClientCommand) => void }) {
+  const buttons = sectionButtons(live.slides);
+  const current = live.slides.find((s) => s.id === live.slideId)?.section ?? "";
+  return (
+    <div className="section-jump" role="group" aria-label="Jump to section">
+      <span className="section-jump-label">Jump to</span>
+      {buttons.length === 0 ? (
+        <span className="muted section-hint">Label slides as Verse, Chorus, Bridge… in the Slides tab to get jump buttons here.</span>
+      ) : (
+        buttons.map((b) => (
+          <button
+            key={b.key}
+            type="button"
+            className={`sec-${b.key}`}
+            aria-current={current === b.key ? "true" : undefined}
+            aria-disabled={!enabled}
+            title={b.count > 1 ? `Next ${b.label} (${b.count} in this song)` : `Go to the ${b.label}`}
+            onClick={() => enabled && send({ type: "section", section: b.key })}
+          >
+            {b.label}
+            {b.count > 1 && <span className="count"> ×{b.count}</span>}
+          </button>
+        ))
+      )}
     </div>
   );
 }
@@ -109,6 +144,7 @@ export function LivePanel({ live, display, presence, connected, send }: Props) {
               {blank ? "Show text (B)" : "Blank text (B)"}
             </button>
           </div>
+          {live?.presentationId != null && live.slides.length > 0 && <SectionButtons live={live} enabled={isLive} send={send} />}
           {blank && live?.presentationId != null && <p className="blank-note">Text is hidden on both displays. The video keeps playing.</p>}
 
           <div className="slide-peek now">

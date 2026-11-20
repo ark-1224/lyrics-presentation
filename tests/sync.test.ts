@@ -286,6 +286,40 @@ describe("jumping between slides", () => {
   });
 });
 
+describe("jumping to a section", () => {
+  it("moves the control panel and both displays when a section button is pressed", async () => {
+    server = await startTestServer();
+    const song = await makePresentation("Song", [{ lyrics: "Verse 1" }, { lyrics: "Chorus" }, { lyrics: "Verse 2" }, { lyrics: "Bridge" }]);
+    // Label the slides (this is what the dropdown on each slide card does).
+    const labels = ["verse", "chorus", "verse", "bridge"];
+    for (const [i, section] of labels.entries()) await api("PATCH", `/api/slides/${song.slideIds[i]}`, { section });
+
+    const control = await connect("control");
+    const main = await connect("main");
+    const singers = await connect("singers");
+    control.send({ type: "show", presentationId: song.id });
+    await main.until(() => main.display?.lyrics === "Verse 1", "starts on verse 1");
+    expect(control.live?.live.slides.map((s) => s.section)).toEqual(labels);
+
+    control.send({ type: "section", section: "bridge" });
+    await main.until(() => main.display?.lyrics === "Bridge", "main jumps to the bridge");
+    await singers.until(() => singers.display?.lyrics === "Bridge", "singers jump to the bridge");
+    await control.until(() => control.live?.live.slideIndex === 3, "control sees index 3");
+
+    control.send({ type: "section", section: "chorus" });
+    await main.until(() => main.display?.lyrics === "Chorus", "then back to the chorus");
+
+    control.send({ type: "section", section: "verse" }); // the next verse after the chorus
+    await main.until(() => main.display?.lyrics === "Verse 2", "next verse is verse 2");
+
+    // A display can't press buttons, and a section nobody used does nothing.
+    main.send({ type: "section", section: "bridge" });
+    control.send({ type: "section", section: "outro" });
+    await new Promise((r) => setTimeout(r, 150));
+    expect(main.display?.lyrics).toBe("Verse 2");
+  });
+});
+
 describe("WebSocket access control", () => {
   it("lets displays connect without a password but not the control role", async () => {
     server = await startTestServer({ appPassword: "secret" });

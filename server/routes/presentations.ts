@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { isSectionKey } from "../../shared/types.js";
+import type { SlideSection } from "../../shared/types.js";
 import type { Repo } from "../repo.js";
 
 export const MAX_NAME = 200;
@@ -110,7 +112,13 @@ export function presentationRoutes(repo: Repo, onChange: () => void): Router {
     const lyrics = optionalText(req.body?.lyrics);
     const notes = optionalText(req.body?.notes);
     if (lyrics === null || notes === null) return void res.status(400).json({ error: "Text is too long" });
-    const slide = id && repo.updateSlide(id, { lyrics, notes });
+    // "" clears the section; anything else must be one of the known sections.
+    const rawSection: unknown = req.body?.section;
+    if (rawSection !== undefined && rawSection !== "" && !isSectionKey(rawSection)) {
+      return void res.status(400).json({ error: "Unknown section" });
+    }
+    const section = rawSection as SlideSection | undefined;
+    const slide = id && repo.updateSlide(id, { lyrics, notes, section });
     if (!slide) return void res.status(404).json({ error: "Slide not found" });
     onChange();
     res.json(slide);
