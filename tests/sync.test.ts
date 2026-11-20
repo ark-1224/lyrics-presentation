@@ -222,6 +222,70 @@ describe("live sync", () => {
   });
 });
 
+describe("jumping between slides", () => {
+  it("jumps freely in any order (1 -> 5 -> 2 -> last -> 1) on the control panel and both displays", async () => {
+    server = await startTestServer();
+    const song = await makePresentation(
+      "Long song",
+      Array.from({ length: 6 }, (_, i) => ({ lyrics: `Verse ${i + 1}\nsecond line` })),
+    );
+    const control = await connect("control");
+    const main = await connect("main");
+    const singers = await connect("singers");
+    control.send({ type: "show", presentationId: song.id });
+    await main.until(() => main.display?.lyrics.startsWith("Verse 1") === true, "starts on slide 1");
+
+    // The control panel gets a list of every slide with its first line, to build the jump list.
+    expect(control.live?.live.slides.map((x) => x.text)).toEqual(["Verse 1", "Verse 2", "Verse 3", "Verse 4", "Verse 5", "Verse 6"]);
+    expect(control.live?.live.slides.map((x) => x.id)).toEqual(song.slideIds);
+
+    // Straight from slide 1 to slide 5, skipping 2, 3 and 4.
+    for (const [target, label] of [[4, "Verse 5"], [1, "Verse 2"], [5, "Verse 6"], [0, "Verse 1"]] as const) {
+      control.send({ type: "goto", slideId: song.slideIds[target]! });
+      await main.until(() => main.display?.lyrics.startsWith(label) === true, `main shows ${label}`);
+      await singers.until(() => singers.display?.lyrics.startsWith(label) === true, `singers shows ${label}`);
+      await control.until(() => control.live?.live.slideIndex === target, `control index ${target}`);
+    }
+
+    // Next/Previous continue from wherever the jump landed.
+    control.send({ type: "goto", slideId: song.slideIds[3]! });
+    await control.until(() => control.live?.live.slideIndex === 3, "on slide 4");
+    control.send({ type: "next" });
+    await main.until(() => main.display?.lyrics.startsWith("Verse 5") === true, "next goes to 5");
+  });
+
+  it("ignores a jump to a slide from a different presentation", async () => {
+    server = await startTestServer();
+    const a = await makePresentation("A", [{ lyrics: "A1" }, { lyrics: "A2" }]);
+    const b = await makePresentation("B", [{ lyrics: "B1" }]);
+    const control = await connect("control");
+    control.send({ type: "show", presentationId: a.id });
+    await control.until(() => control.live?.live.presentationId === a.id, "A is live");
+    control.send({ type: "goto", slideId: b.slideIds[0]! });
+    await new Promise((r) => setTimeout(r, 150));
+    expect(control.live?.live.presentationId).toBe(a.id);
+    expect(control.live?.live.slideIndex).toBe(0);
+  });
+
+  it("keeps the jump list up to date when slides are edited, added or removed", async () => {
+    server = await startTestServer();
+    const song = await makePresentation("Song", [{ lyrics: "One" }, { lyrics: "" }, { lyrics: "x".repeat(200) }]);
+    const control = await connect("control");
+    control.send({ type: "show", presentationId: song.id });
+    await control.until(() => control.live?.live.slides.length === 3, "list loaded");
+    expect(control.live?.live.slides[1]?.text).toBe(""); // an empty slide has no first line
+    expect(control.live?.live.slides[2]?.text.length).toBe(70); // long lines are shortened
+    expect(control.live?.live.slides[2]?.text.endsWith("…")).toBe(true);
+
+    await api("PATCH", `/api/slides/${song.slideIds[1]}`, { lyrics: "\n\n  Second  \nmore" });
+    await control.until(() => control.live?.live.slides[1]?.text === "Second", "edit appears in list");
+    await api("POST", `/api/presentations/${song.id}/slides`, { lyrics: "Four" });
+    await control.until(() => control.live?.live.slides.length === 4, "added slide appears");
+    await api("DELETE", `/api/slides/${song.slideIds[0]}`);
+    await control.until(() => control.live?.live.slides.length === 3 && control.live.live.slides[0]?.text === "Second", "removed slide disappears");
+  });
+});
+
 describe("WebSocket access control", () => {
   it("lets displays connect without a password but not the control role", async () => {
     server = await startTestServer({ appPassword: "secret" });

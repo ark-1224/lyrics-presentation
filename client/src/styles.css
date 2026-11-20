@@ -320,3 +320,13 @@ dialog.import-dialog[open] { display: flex; flex-direction: column; }
 
 @media (max-width: 520px) { .home-status { margin-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .home-card { transition: none; } .home-card:hover { transform: none; } }
+
+/* --- jump to slide list (live panel) --- */
+.live-side { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
+.jump h3 { margin: 0 0 0.35rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.jump-list { display: flex; flex-direction: column; gap: 0.25rem; max-height: 13rem; overflow-y: auto; position: relative; padding-right: 0.25rem; }
+.jump-list button { width: 100%; display: flex; align-items: center; gap: 0.6rem; text-align: left; padding: 0.35rem 0.6rem; background: var(--bg); }
+.jump-list button .num { flex: none; min-width: 1.6rem; text-align: center; font-weight: 700; color: var(--accent); }
+.jump-list button .txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jump-list button.current { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.jump-list button.current .num { color: inherit; }

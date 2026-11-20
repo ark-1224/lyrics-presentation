@@ -12,6 +12,12 @@ interface Persisted {
 
 const KV_KEY = "live";
 
+/** First non-empty line of a slide, shortened: enough to recognise the slide in a list. */
+function firstLine(lyrics: string): string {
+  const line = lyrics.split("\n").find((l) => l.trim() !== "")?.trim() ?? "";
+  return line.length > 70 ? `${line.slice(0, 69)}…` : line;
+}
+
 /**
  * Server-side source of truth for "what is on the screens right now".
  *
@@ -71,6 +77,7 @@ export function createLive(repo: Repo) {
       blank: state.blank,
       nextLyrics: slides[index + 1]?.lyrics ?? null,
       notes: slide?.notes ?? "",
+      slides: slides.map((s) => ({ id: s.id, text: firstLine(s.lyrics) })),
     };
 
     const nextDisplayJson = JSON.stringify(nextDisplay);

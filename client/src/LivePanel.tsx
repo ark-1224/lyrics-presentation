@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { ClientCommand, DisplayState, LiveInfo, Presence } from "../../shared/types";
 import { DisplayView } from "./DisplayView";
 import { SHORTCUT_HELP } from "./shortcuts";
@@ -19,6 +20,46 @@ function StatusChip({ label, state }: { label: string; state: "on" | "off" | "un
       <span className="dot" aria-hidden />
       {label}: {text}
     </span>
+  );
+}
+
+/**
+ * Every slide of the live presentation as a list. Click any one to put it on the screens
+ * right away, in any order (slide 1 to slide 5, back to slide 2...).
+ */
+function JumpList({ live, enabled, send }: { live: LiveInfo; enabled: boolean; send: (cmd: ClientCommand) => void }) {
+  const box = useRef<HTMLOListElement>(null);
+
+  // Keep the current slide in view inside the list (without scrolling the whole page).
+  useEffect(() => {
+    const list = box.current;
+    const active = list?.querySelector<HTMLElement>("[aria-current='true']");
+    if (list && active) list.scrollTop = active.offsetTop - list.clientHeight / 2 + active.clientHeight / 2;
+  }, [live.slideId]);
+
+  return (
+    <div className="jump">
+      <h3>Jump to slide</h3>
+      <ol ref={box} className="jump-list">
+        {live.slides.map((s, i) => {
+          const current = s.id === live.slideId;
+          return (
+            <li key={s.id}>
+              <button
+                type="button"
+                className={current ? "current" : ""}
+                aria-current={current}
+                disabled={!enabled}
+                onClick={() => send({ type: "goto", slideId: s.id })}
+              >
+                <span className="num">{i + 1}</span>
+                <span className="txt">{s.text || "(empty slide)"}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 
@@ -95,6 +136,7 @@ export function LivePanel({ live, display, presence, connected, send }: Props) {
           </dl>
         </div>
 
+        <div className="live-side">
         <div className="previews">
           <figure>
             <div className="preview-box">{display ? <DisplayView kind="main" state={display} preview /> : null}</div>
@@ -104,6 +146,8 @@ export function LivePanel({ live, display, presence, connected, send }: Props) {
             <div className="preview-box">{display ? <DisplayView kind="singers" state={display} preview /> : null}</div>
             <figcaption>Singers display</figcaption>
           </figure>
+        </div>
+        {live?.presentationId != null && live.slides.length > 0 && <JumpList live={live} enabled={isLive} send={send} />}
         </div>
       </div>
     </section>

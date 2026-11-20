@@ -142,6 +142,8 @@ export interface LiveInfo {
   blank: boolean;
   nextLyrics: string | null;
   notes: string;
+  /** Every slide of the live presentation (id + first line), for the "jump to slide" list. */
+  slides: { id: number; text: string }[];
 }
 
 /** How many windows of each kind are currently connected. */

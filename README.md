@@ -25,6 +25,8 @@ drag-reorder and delete slides (lyrics plus private notes). Edits autosave. Data
    each (that click is what lets the browser go fullscreen). The control panel shows a green
    light for each connected display.
 2. In the control panel pick a presentation and click **Go live**, or click **▶ Show** on any slide.
+   Once it is live, the **Jump to slide** list in the Live panel shows every slide with its first line:
+   click any one to go straight there, in any order (slide 1 to slide 5, then back to slide 2, and so on).
 3. Run the show with **Next / Previous / Blank**, or the keyboard: **→ ↓ Space** next, **← ↑**
    previous, **B** blank. Shortcuts pause while you are typing in a text box (press **Esc** to leave it).
 
