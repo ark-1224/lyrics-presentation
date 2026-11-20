@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ControlPanel } from "./ControlPanel";
 
 // Only three fixed pages, so a simple path switch is enough (no router library needed).
 type Page = "control" | "main" | "singers" | "home";
@@ -10,9 +11,14 @@ function pageFromPath(pathname: string): Page {
   return "home";
 }
 
-/** Placeholder shell for step (a): proves the build, routing and health check work end to end. */
 export function App() {
   const page = pageFromPath(window.location.pathname);
+  if (page === "control") return <ControlPanel />;
+  return <Placeholder page={page} />;
+}
+
+/** Display pages arrive in step (c); until then they just prove routing + health work. */
+function Placeholder({ page }: { page: Page }) {
   const [health, setHealth] = useState<string>("checking...");
 
   useEffect(() => {
@@ -23,7 +29,7 @@ export function App() {
   }, []);
 
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem" }}>
+    <main className="placeholder">
       <h1>Lyric Presenter</h1>
       <p>Page: {page}</p>
       <p>Server health: {health}</p>

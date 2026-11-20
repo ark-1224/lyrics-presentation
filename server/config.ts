@@ -8,6 +8,8 @@ export interface Config {
   persistent: boolean;
   /** Set only when running on Railway without any volume configured. */
   warnings: string[];
+  /** Optional shared password for the control panel/API. Unset = app runs open (local dev). */
+  appPassword?: string;
 }
 
 /**
@@ -34,5 +36,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       "Running on Railway with no Volume attached: data and uploaded videos will be LOST on every redeploy. See README.",
     );
   }
-  return { port, dataDir, persistent, warnings };
+  const appPassword = env.APP_PASSWORD || undefined;
+  return { port, dataDir, persistent, warnings, appPassword };
 }

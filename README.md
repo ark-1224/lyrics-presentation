@@ -3,13 +3,27 @@
 Lyric presentation web app for church/event use. One operator controls everything from a
 browser; two display windows (Main with video, Singers with lyrics only) stay in sync.
 
-> Status: **step (a)** of the build is done (project setup, deployment config, health check).
-> The control panel, displays, video upload and PPTX import are added in the next steps.
+> Status: steps **(a)** setup/deploy/health check and **(b)** control panel with presentations
+> and slides are done. Live displays, video upload/styling and PPTX import come next.
 
 ## Stack
 
-Node 22 + TypeScript, Express (server), React + Vite (frontend), SQLite (from step b).
+Node 22 + TypeScript, Express (server), React + Vite (frontend), SQLite via `better-sqlite3`.
 One app, one process, one Docker image.
+
+## What works now
+
+Open `/control` to create, rename, duplicate and delete presentations, and to add, edit,
+drag-reorder and delete slides (lyrics plus private notes). Edits autosave. Data lives in
+`DATA_DIR/app.db`.
+
+## Turning on the password
+
+By default the app is open, which is fine on your own laptop. For a public Railway URL, set the
+`APP_PASSWORD` environment variable (Railway: service **Variables** tab → add `APP_PASSWORD`).
+The control panel then asks for it, and every API call except `/healthz` is refused without it.
+The login is remembered for 30 days in that browser. Changing the password signs everyone out.
+Leave `APP_PASSWORD` unset locally to run without a login.
 
 ## Run locally
 
@@ -35,7 +49,9 @@ Other scripts: `npm run lint`, `npm test`, `npm run typecheck`.
 | `PORT` | `3000` | Port to listen on. Railway sets this automatically. |
 | `DATA_DIR` | `RAILWAY_VOLUME_MOUNT_PATH`, else `./data` | Where the database and uploaded videos live. |
 
-More (`APP_PASSWORD`, `MAX_VIDEO_MB`) are added in later steps.
+| `APP_PASSWORD` | unset (open) | Optional shared password for the control panel and API. |
+
+`MAX_VIDEO_MB` is added with video upload in step (d).
 
 ## Health check
 
