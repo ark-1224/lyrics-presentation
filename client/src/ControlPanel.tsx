@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { mergeSettings } from "../../shared/types";
-import type { DisplayState, LiveInfo, Presence, SlideSection } from "../../shared/types";
+import type { CustomSection, DisplayState, LiveInfo, Presence, SectionId, SlideSection } from "../../shared/types";
 import { ApiError, api, setUnauthorizedHandler } from "./api";
 import type { DeepPartialSettings, Presentation, PresentationDetail, SessionInfo, Slide, Video } from "./api";
 import { Library } from "./Library";
@@ -249,9 +249,27 @@ function Workspace({ authRequired, onSignOut }: { authRequired: boolean; onSignO
     const before = detail?.slides.find((s) => s.id === id)?.section ?? "";
     setSlides((ss) => ss.map((s) => (s.id === id ? { ...s, section } : s)));
     try {
-      await api.updateSlide(id, { section });
+      // The server may adjust capitals to match a custom name already used in this song.
+      const saved = await api.updateSlide(id, { section });
+      setSlides((ss) => ss.map((s) => (s.id === id ? { ...s, section: saved.section } : s)));
     } catch (err) {
       setSlides((ss) => ss.map((s) => (s.id === id ? { ...s, section: before } : s)));
+      fail(err);
+    }
+  }
+
+  /** Rename a custom section on every slide of this song that carries it. */
+  async function renameSection(from: CustomSection, to: SectionId) {
+    if (!detail) return;
+    const presentationId = detail.id;
+    try {
+      const updated = await api.renameSection(presentationId, from, to);
+      const labels = new Map(updated.map((s) => [s.id, s.section]));
+      // Take only the labels: the cards may hold newer text than this response.
+      setDetail((d) =>
+        d && d.id === presentationId ? { ...d, slides: d.slides.map((s) => ({ ...s, section: labels.get(s.id) ?? s.section })) } : d,
+      );
+    } catch (err) {
       fail(err);
     }
   }
@@ -450,6 +468,7 @@ function Workspace({ authRequired, onSignOut }: { authRequired: boolean; onSignO
                 onDelete={deleteSlide}
                 onReorder={reorderSlides}
                 onSetSection={setSlideSection}
+                onRenameSection={renameSection}
               />
             )}
           </div>

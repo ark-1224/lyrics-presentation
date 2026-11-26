@@ -4,7 +4,8 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { SECTIONS, isSectionKey } from "../shared/types.js";
+import { sectionButtons, sectionClass, sectionLabel } from "../client/src/sections.js";
+import { SECTIONS, isSectionKey, sectionFromName } from "../shared/types.js";
 import { openDb } from "../server/db.js";
 import { parseCommand } from "../server/ws.js";
 import { makeTestApp } from "./helpers.js";
@@ -179,5 +180,118 @@ describe("section command over the socket protocol", () => {
     for (const bad of ['{"type":"section"}', '{"type":"section","section":"refrain"}', '{"type":"section","section":""}', '{"type":"section","section":7}']) {
       expect(parseCommand(bad), bad).toBeUndefined();
     }
+  });
+});
+
+describe("custom section names", () => {
+  it("tidies a typed name, maps built-in names, and refuses unusable ones", () => {
+    expect(sectionFromName("  Last   Refrain ")).toBe("custom:Last Refrain");
+    expect(sectionFromName("CHORUS")).toBe("chorus");
+    expect(sectionFromName("pre-Chorus")).toBe("pre-chorus");
+    expect(sectionFromName("a".repeat(30))).toBeDefined();
+    for (const bad of ["", "   ", "a".repeat(31), "bad name"]) expect(sectionFromName(bad), JSON.stringify(bad)).toBeUndefined();
+  });
+
+  it("is saved on one slide only, and badly formed values are rejected", async () => {
+    const { app, repo } = makeTestApp();
+    const p = repo.createPresentation("Song");
+    const first = repo.addSlide(p.id, "one")!;
+    const second = repo.addSlide(p.id, "two")!;
+
+    const res = await request(app).patch(`/api/slides/${first.id}`).send({ section: "custom:Refrain" });
+    expect(res.status).toBe(200);
+    expect(repo.getSlide(first.id)?.section).toBe("custom:Refrain");
+    expect(repo.getSlide(second.id)?.section).toBe("");
+
+    for (const bad of ["custom:", "custom:  Refrain", "custom:Chorus", `custom:${"a".repeat(31)}`]) {
+      expect((await request(app).patch(`/api/slides/${first.id}`).send({ section: bad })).status, bad).toBe(400);
+    }
+  });
+
+  it("reuses the spelling already in the song, so capitals don't split a section", () => {
+    const { repo } = makeTestApp();
+    const p = repo.createPresentation("Song");
+    const a = repo.addSlide(p.id, "one")!;
+    const b = repo.addSlide(p.id, "two")!;
+    repo.updateSlide(a.id, { section: "custom:Refrain" });
+    expect(repo.updateSlide(b.id, { section: "custom:REFRAIN" })?.section).toBe("custom:Refrain");
+    // A slide that is the only one with the name can change its capitals.
+    repo.updateSlide(b.id, { section: "" });
+    expect(repo.updateSlide(a.id, { section: "custom:refrain" })?.section).toBe("custom:refrain");
+  });
+
+  it("gets a jump button that walks through its slides", () => {
+    const { live, slides, repo, at } = makeSong();
+    repo.updateSlide(slides[2]!.id, { section: "custom:Refrain" });
+    repo.updateSlide(slides[6]!.id, { section: "custom:refrain" });
+    live.refresh();
+    expect(sectionButtons(live.getInfo().slides)).toContainEqual({ key: "custom:Refrain", label: "Refrain", count: 2 });
+
+    const command = parseCommand('{"type":"section","section":"custom:Refrain"}')!;
+    live.command(command);
+    expect(at()).toBe(2);
+    live.command(command);
+    expect(at()).toBe(6);
+    live.command(command);
+    expect(at()).toBe(2);
+  });
+
+  it("has a label and a colour that depends only on the name", () => {
+    expect(sectionLabel("custom:Refrain")).toBe("Refrain");
+    expect(sectionClass("custom:Refrain")).toMatch(/^sec-custom-[0-5]$/);
+    expect(sectionClass("custom:REFRAIN")).toBe(sectionClass("custom:Refrain"));
+    expect(sectionClass("chorus")).toBe("sec-chorus");
+    expect(sectionClass("")).toBe("");
+  });
+});
+
+describe("renaming a custom section", () => {
+  /** Two songs that both use "Refran"; the first has it on two slides and "Hook" on a third. */
+  function makeSongs() {
+    const t = makeTestApp();
+    const song = (name: string, sections: ("custom:Refran" | "custom:Hook")[]) => {
+      const p = t.repo.createPresentation(name);
+      for (const section of sections) t.repo.updateSlide(t.repo.addSlide(p.id, "x")!.id, { section });
+      return p;
+    };
+    const one = song("One", ["custom:Refran", "custom:Hook", "custom:Refran"]);
+    const two = song("Two", ["custom:Refran"]);
+    const sections = (id: number) => t.repo.listSlides(id).map((s) => s.section);
+    const rename = (id: number, from: unknown, to: unknown) => request(t.app).patch(`/api/presentations/${id}/sections`).send({ from, to });
+    return { ...t, one, two, sections, rename };
+  }
+
+  it("changes every slide using it in that song only", async () => {
+    const { one, two, sections, rename } = makeSongs();
+    const res = await rename(one.id, "custom:Refran", "custom:Refrain");
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(3);
+    expect(sections(one.id)).toEqual(["custom:Refrain", "custom:Hook", "custom:Refrain"]);
+    expect(sections(two.id)).toEqual(["custom:Refran"]);
+  });
+
+  it("can change capitals only, merge into another name, or become a built-in section", async () => {
+    const { one, sections, rename } = makeSongs();
+    await rename(one.id, "custom:Refran", "custom:REFRAN");
+    expect(sections(one.id)).toEqual(["custom:REFRAN", "custom:Hook", "custom:REFRAN"]);
+    await rename(one.id, "custom:REFRAN", "custom:hook"); // takes the existing spelling
+    expect(sections(one.id)).toEqual(["custom:Hook", "custom:Hook", "custom:Hook"]);
+    await rename(one.id, "custom:Hook", "chorus");
+    expect(sections(one.id)).toEqual(["chorus", "chorus", "chorus"]);
+  });
+
+  it("rejects bad requests and names that aren't used", async () => {
+    const { one, sections, rename } = makeSongs();
+    expect((await rename(one.id, "chorus", "custom:X")).status).toBe(400); // built-ins can't be renamed
+    expect((await rename(one.id, "custom:Refran", "")).status).toBe(400);
+    expect((await rename(one.id, "custom:Missing", "custom:X")).status).toBe(404);
+    expect((await rename(999, "custom:Refran", "custom:X")).status).toBe(404);
+    expect(sections(one.id)).toEqual(["custom:Refran", "custom:Hook", "custom:Refran"]);
+  });
+
+  it("requires the password when one is set", async () => {
+    const { app } = makeTestApp({ appPassword: "secret" });
+    const res = await request(app).patch("/api/presentations/1/sections").send({ from: "custom:A", to: "custom:B" });
+    expect(res.status).toBe(401);
   });
 });

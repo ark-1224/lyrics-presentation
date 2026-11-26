@@ -1,5 +1,5 @@
-import { isSectionKey, mergeSettings, normalizeSettings } from "../shared/types.js";
-import type { PresentationSettings, SlideSection, Video } from "../shared/types.js";
+import { isCustomSection, isSectionId, mergeSettings, normalizeSettings } from "../shared/types.js";
+import type { CustomSection, PresentationSettings, SectionId, SlideSection, Video } from "../shared/types.js";
 import type { Db } from "./db.js";
 
 export interface Presentation {
@@ -74,7 +74,7 @@ const toSlide = (r: SlideRow): Slide => ({
   lyrics: r.lyrics,
   notes: r.notes,
   // Anything that isn't a known section (e.g. from a future version) is treated as "no section".
-  section: isSectionKey(r.section) ? r.section : "",
+  section: isSectionId(r.section) ? r.section : "",
 });
 
 const PRESENTATION_SELECT = `
@@ -119,6 +119,17 @@ export function createRepo(db: Db) {
   function getVideo(id: number): VideoRecord | undefined {
     const row = db.prepare("SELECT * FROM videos WHERE id = ?").get(id) as VideoRow | undefined;
     return row && toVideo(row);
+  }
+
+  /**
+   * Custom names that differ only in capitals are the same section: reuse the spelling already in the
+   * song, so they share one jump button. `ignore` skips the slides that are being relabelled.
+   */
+  function matchSpelling<T extends SlideSection>(presentationId: number, section: T, ignore: (s: Slide) => boolean): T {
+    if (!isCustomSection(section)) return section;
+    const wanted = section.toLowerCase();
+    const existing = listSlides(presentationId).find((s) => !ignore(s) && s.section.toLowerCase() === wanted);
+    return (existing?.section as T | undefined) ?? section;
   }
 
   /** Rewrite positions 0..n-1 so they stay contiguous after deletes. */
@@ -275,11 +286,24 @@ export function createRepo(db: Db) {
         db.prepare("UPDATE slides SET lyrics = ?, notes = ?, section = ? WHERE id = ?").run(
           patch.lyrics ?? cur.lyrics,
           patch.notes ?? cur.notes,
-          patch.section ?? cur.section,
+          patch.section === undefined ? cur.section : matchSpelling(cur.presentationId, patch.section, (s) => s.id === id),
           id,
         );
         touch.run(cur.presentationId);
         return getSlide(id);
+      })();
+    },
+
+    /** Rename a custom section on every slide of one presentation. Undefined if no slide there uses it. */
+    renameSection(presentationId: number, from: CustomSection, to: SectionId): Slide[] | undefined {
+      return db.transaction(() => {
+        const name = matchSpelling(presentationId, to, (s) => s.section === from);
+        const info = db
+          .prepare("UPDATE slides SET section = ? WHERE presentation_id = ? AND section = ?")
+          .run(name, presentationId, from);
+        if (!info.changes) return undefined;
+        touch.run(presentationId);
+        return listSlides(presentationId);
       })();
     },
 

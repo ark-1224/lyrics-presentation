@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { isSectionKey } from "../../shared/types.js";
+import { isCustomSection, isSectionId } from "../../shared/types.js";
 import type { SlideSection } from "../../shared/types.js";
 import type { Repo } from "../repo.js";
 
@@ -107,14 +107,26 @@ export function presentationRoutes(repo: Repo, onChange: () => void): Router {
     res.json(slides);
   });
 
+  // Rename a custom section everywhere in this presentation: {"from": "custom:Refran", "to": "custom:Refrain"}.
+  r.patch("/presentations/:id/sections", (req, res) => {
+    const id = parseId(req.params.id);
+    const from: unknown = req.body?.from;
+    const to: unknown = req.body?.to;
+    if (!isCustomSection(from) || !isSectionId(to)) return void res.status(400).json({ error: "Unknown section" });
+    const slides = id && repo.renameSection(id, from, to);
+    if (!slides) return void res.status(404).json({ error: "No slide uses that section" });
+    onChange();
+    res.json(slides);
+  });
+
   r.patch("/slides/:id", (req, res) => {
     const id = parseId(req.params.id);
     const lyrics = optionalText(req.body?.lyrics);
     const notes = optionalText(req.body?.notes);
     if (lyrics === null || notes === null) return void res.status(400).json({ error: "Text is too long" });
-    // "" clears the section; anything else must be one of the known sections.
+    // "" clears the section; anything else must be a built-in section or a well-formed custom one.
     const rawSection: unknown = req.body?.section;
-    if (rawSection !== undefined && rawSection !== "" && !isSectionKey(rawSection)) {
+    if (rawSection !== undefined && rawSection !== "" && !isSectionId(rawSection)) {
       return void res.status(400).json({ error: "Unknown section" });
     }
     const section = rawSection as SlideSection | undefined;

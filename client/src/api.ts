@@ -1,5 +1,5 @@
 // Thin typed wrapper around the REST API. Mirrors server/repo.ts types.
-import type { ImportRequest, PptxPreview, PresentationSettings, SlideSection, Video } from "../../shared/types";
+import type { CustomSection, ImportRequest, PptxPreview, PresentationSettings, SectionId, SlideSection, Video } from "../../shared/types";
 
 export type { PresentationSettings, Video };
 
@@ -138,6 +138,8 @@ export const api = {
   importPresentation: (req: ImportRequest) => request<Presentation>("POST", "/api/import", req),
 
   addSlide: (presentationId: number) => request<Slide>("POST", `/api/presentations/${presentationId}/slides`, {}),
+  renameSection: (presentationId: number, from: CustomSection, to: SectionId) =>
+    request<Slide[]>("PATCH", `/api/presentations/${presentationId}/sections`, { from, to }),
   updateSlide: (id: number, patch: { lyrics?: string; notes?: string; section?: SlideSection }) => request<Slide>("PATCH", `/api/slides/${id}`, patch),
   deleteSlide: (id: number) => request<void>("DELETE", `/api/slides/${id}`),
   reorderSlides: (presentationId: number, slideIds: number[]) =>

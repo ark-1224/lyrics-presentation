@@ -134,10 +134,34 @@ export const SECTIONS = [
 ] as const;
 
 export type SectionKey = (typeof SECTIONS)[number]["key"];
+/** A name the operator typed ("custom:Refrain"). The prefix keeps it apart from the built-in keys. */
+export type CustomSection = `custom:${string}`;
+export type SectionId = SectionKey | CustomSection;
 /** "" means the slide has no section. */
-export type SlideSection = SectionKey | "";
+export type SlideSection = SectionId | "";
+
+export const MAX_SECTION_NAME = 30;
+export const CUSTOM_PREFIX = "custom:";
 
 export const isSectionKey = (v: unknown): v is SectionKey => SECTIONS.some((s) => s.key === v);
+
+/**
+ * The section to store for a typed name, or undefined if the name can't be used (empty or too long).
+ * Extra spaces are removed, and a built-in name ("chorus") gives the built-in section,
+ * so a song never ends up with two Chorus buttons.
+ */
+export function sectionFromName(typed: string): SectionId | undefined {
+  const name = typed.replace(/\s+/g, " ").trim();
+  if (name.length === 0 || name.length > MAX_SECTION_NAME || /\p{Cc}/u.test(name)) return undefined;
+  const builtIn = SECTIONS.find((s) => s.label.toLowerCase() === name.toLowerCase());
+  return builtIn ? builtIn.key : `${CUSTOM_PREFIX}${name}`;
+}
+
+/** True for a custom section in exactly the form `sectionFromName` produces. */
+export const isCustomSection = (v: unknown): v is CustomSection =>
+  typeof v === "string" && v.startsWith(CUSTOM_PREFIX) && sectionFromName(v.slice(CUSTOM_PREFIX.length)) === v;
+
+export const isSectionId = (v: unknown): v is SectionId => isSectionKey(v) || isCustomSection(v);
 
 // ---- Live state -----------------------------------------------------------------------------
 
@@ -183,7 +207,7 @@ export type ClientCommand =
   | { type: "blank"; value?: boolean } // value omitted = toggle
   | { type: "goto"; slideId: number }
   /** Jump to the next slide labelled with this section after the current one, wrapping around. */
-  | { type: "section"; section: SectionKey };
+  | { type: "section"; section: SectionId };
 
 /** Server -> clients. */
 export type ServerMessage =

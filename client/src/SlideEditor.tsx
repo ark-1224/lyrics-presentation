@@ -11,10 +11,11 @@ import {
 import type { DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { SECTIONS } from "../../shared/types";
-import type { SlideSection } from "../../shared/types";
+import type { CustomSection, SectionId, SlideSection } from "../../shared/types";
 import type { Slide } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { SectionPicker } from "./SectionPicker";
+import { sectionClass } from "./sections";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -26,6 +27,9 @@ interface CardProps {
   isLive: boolean;
   onShow: (slideId: number) => void;
   onSetSection: (slideId: number, section: SlideSection) => void;
+  /** How many slides in this song share this slide's section (renaming changes them all). */
+  sectionCount: number;
+  onRenameSection: (from: CustomSection, to: SectionId) => void;
   onSave: (id: number, patch: { lyrics: string; notes: string }) => Promise<void>;
   onDelete: (slide: Slide) => void;
 }
@@ -34,7 +38,7 @@ interface CardProps {
  * One editable slide. Text is kept in local state so typing never waits on the server;
  * it is saved 0.8 s after the last keystroke, on blur, and when the card goes away.
  */
-function SlideCard({ slide, index, autoFocus, isLive, onShow, onSetSection, onSave, onDelete }: CardProps) {
+function SlideCard({ slide, index, autoFocus, isLive, onShow, onSetSection, sectionCount, onRenameSection, onSave, onDelete }: CardProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: slide.id });
   const [lyrics, setLyrics] = useState(slide.lyrics);
   const [notes, setNotes] = useState(slide.notes);
@@ -79,7 +83,7 @@ function SlideCard({ slide, index, autoFocus, isLive, onShow, onSetSection, onSa
   return (
     <li
       ref={setNodeRef}
-      className={`slide-card${isDragging ? " dragging" : ""}${isLive ? " is-live" : ""}${slide.section ? ` has-section sec-${slide.section}` : ""}`}
+      className={`slide-card${isDragging ? " dragging" : ""}${isLive ? " is-live" : ""}${slide.section ? ` has-section ${sectionClass(slide.section)}` : ""}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       <div className="slide-head">
@@ -95,20 +99,13 @@ function SlideCard({ slide, index, autoFocus, isLive, onShow, onSetSection, onSa
         </button>
         <span className="slide-number">Slide {index + 1}</span>
         {isLive && <span className="live-badge">ON SCREEN</span>}
-        <select
-          className="section-select"
-          value={slide.section}
-          aria-label={`Section of slide ${index + 1}`}
-          title="Label this slide so you can jump to it from the Live panel"
-          onChange={(e) => onSetSection(slide.id, e.target.value as SlideSection)}
-        >
-          <option value="">No section</option>
-          {SECTIONS.map((s) => (
-            <option key={s.key} value={s.key}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <SectionPicker
+          section={slide.section}
+          slideNumber={index + 1}
+          sharedBy={sectionCount}
+          onSet={(section) => onSetSection(slide.id, section)}
+          onRename={onRenameSection}
+        />
         <button type="button" className="show-btn" onClick={() => onShow(slide.id)} disabled={isLive} title="Put this slide on the displays">
           ▶ Show
         </button>
@@ -164,6 +161,7 @@ interface Props {
   onGoLive: () => void;
   onShow: (slideId: number) => void;
   onSetSection: (slideId: number, section: SlideSection) => void;
+  onRenameSection: (from: CustomSection, to: SectionId) => void;
   /** Settings controls (background video picker) rendered under the heading. */
   children?: ReactNode;
   onAdd: () => Promise<void>;
@@ -173,7 +171,7 @@ interface Props {
 }
 
 /** Right column: the selected presentation's slides, with add / edit / drag-reorder / delete. */
-export function SlideEditor({ name, slides, focusSlideId, isLive, liveSlideId, onGoLive, onShow, onSetSection, children, onAdd, onSave, onDelete, onReorder }: Props) {
+export function SlideEditor({ name, slides, focusSlideId, isLive, liveSlideId, onGoLive, onShow, onSetSection, onRenameSection, children, onAdd, onSave, onDelete, onReorder }: Props) {
   const [deleting, setDeleting] = useState<Slide | null>(null);
   const sensors = useSensors(
     // A small drag distance stops a normal click on the handle from starting a drag.
@@ -230,6 +228,8 @@ export function SlideEditor({ name, slides, focusSlideId, isLive, liveSlideId, o
                 isLive={isLive && slide.id === liveSlideId}
                 onShow={onShow}
                 onSetSection={onSetSection}
+                sectionCount={slides.filter((s) => s.section === slide.section).length}
+                onRenameSection={onRenameSection}
                 onSave={onSave}
                 onDelete={requestDelete}
               />

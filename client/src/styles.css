@@ -110,7 +110,7 @@ input, textarea {
 .slides { display: flex; flex-direction: column; gap: 0.75rem; }
 .slide-card { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem; background: var(--bg); }
 .slide-card.dragging { box-shadow: 0 6px 20px rgb(0 0 0 / 0.3); position: relative; z-index: 2; }
-.slide-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.slide-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
 .slide-head button { font-size: 0.8rem; padding: 0.15rem 0.5rem; }
 .slide-head .handle { cursor: grab; touch-action: none; font-size: 1.1rem; line-height: 1; padding: 0.15rem 0.45rem; }
 .slide-number { font-weight: 600; }
@@ -349,13 +349,19 @@ dialog.import-dialog[open] { display: flex; flex-direction: column; }
 .sec-bridge { --sec: #a855f7; }
 .sec-tag { --sec: #ec4899; }
 .sec-outro { --sec: #84cc16; }
+/* custom names: one of these, chosen from the name (see sectionClass) */
+.sec-custom-0 { --sec: #ef4444; }
+.sec-custom-1 { --sec: #06b6d4; }
+.sec-custom-2 { --sec: #6366f1; }
+.sec-custom-3 { --sec: #a16207; }
+.sec-custom-4 { --sec: #059669; }
+.sec-custom-5 { --sec: #c026d3; }
 
 /* the row of jump buttons in the Live panel */
 .section-jump { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .section-jump-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-right: 0.15rem; }
 .section-hint { font-size: 0.85rem; }
 .section-jump button {
-  --sec: var(--muted);
   min-inline-size: 3rem;
   min-block-size: 2.25rem;
   font-weight: 600;
@@ -377,7 +383,10 @@ dialog.import-dialog[open] { display: flex; flex-direction: column; }
 }
 
 /* small coloured label in the jump list and on slide cards */
-.sec-chip { flex: none; font-size: 0.7rem; font-weight: 700; padding: 0.05rem 0.45rem; border-radius: 4px; color: var(--text); border: 1px solid color-mix(in srgb, var(--sec) 60%, var(--text)); background: color-mix(in srgb, var(--sec) 22%, var(--surface)); }
+.sec-chip { flex: none; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.7rem; font-weight: 700; padding: 0.05rem 0.45rem; border-radius: 4px; color: var(--text); border: 1px solid color-mix(in srgb, var(--sec) 60%, var(--text)); background: color-mix(in srgb, var(--sec) 22%, var(--surface)); }
 .slide-card.has-section { border-left: 5px solid var(--sec); }
 .section-select { font: inherit; font-size: 0.8rem; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.15rem 0.35rem; }
 .slide-card.has-section .section-select { border-color: color-mix(in srgb, var(--sec) 60%, var(--text)); background: color-mix(in srgb, var(--sec) 14%, var(--surface)); }
+/* typing a custom section name */
+.section-name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.section-name input { width: 12rem; font-size: 0.8rem; padding: 0.15rem 0.5rem; }

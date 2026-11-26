@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { ClientCommand, DisplayState, LiveInfo, Presence } from "../../shared/types";
 import { DisplayView } from "./DisplayView";
-import { sectionButtons, sectionLabel } from "./sections";
+import { sectionButtons, sectionClass, sectionLabel } from "./sections";
 import { SHORTCUT_HELP } from "./shortcuts";
 
 interface Props {
@@ -54,7 +54,7 @@ function JumpList({ live, enabled, send }: { live: LiveInfo; enabled: boolean; s
                 onClick={() => send({ type: "goto", slideId: s.id })}
               >
                 <span className="num">{i + 1}</span>
-                {s.section && <span className={`sec-chip sec-${s.section}`}>{sectionLabel(s.section)}</span>}
+                {s.section && <span className={`sec-chip ${sectionClass(s.section)}`}>{sectionLabel(s.section)}</span>}
                 <span className="txt">{s.text || "(empty slide)"}</span>
               </button>
             </li>
@@ -83,7 +83,7 @@ function SectionButtons({ live, enabled, send }: { live: LiveInfo; enabled: bool
           <button
             key={b.key}
             type="button"
-            className={`sec-${b.key}`}
+            className={sectionClass(b.key)}
             aria-current={current === b.key ? "true" : undefined}
             aria-disabled={!enabled}
             title={b.count > 1 ? `Next ${b.label} (${b.count} in this song)` : `Go to the ${b.label}`}

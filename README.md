@@ -28,7 +28,9 @@ drag-reorder and delete slides (lyrics plus private notes). Edits autosave. Data
    Once it is live, the **Jump to slide** list in the Live panel shows every slide with its first line:
    click any one to go straight there, in any order (slide 1 to slide 5, then back to slide 2, and so on).
    **Sections:** on the Slides tab, give a slide a section (Verse, Chorus, Bridge, plus Intro, Pre-chorus, Tag,
-   Outro) with the dropdown on its card. The Live panel then shows one button per section used in the song:
+   Outro) with the dropdown on its card, or pick **Custom name…** to type your own (for example Refrain).
+   A custom name is set on that slide only; **Rename** changes it on every slide of the song that uses it.
+   The Live panel then shows one button per section used in the song:
    press **Chorus** to jump to the next chorus after the current slide (pressing again goes to the one after,
    then wraps around), **Bridge** for the bridge, and so on.
 3. Run the show with **Next / Previous / Blank**, or the keyboard: **â†’ â†“ Space** next, **â† â†‘**
