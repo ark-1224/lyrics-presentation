@@ -6,6 +6,7 @@ import type { DeepPartialSettings, Presentation, PresentationDetail, SessionInfo
 import { Library } from "./Library";
 import { LivePanel } from "./LivePanel";
 import { Login } from "./Login";
+import { Logo } from "./Logo";
 import { SlideEditor } from "./SlideEditor";
 import { isTypingTarget, shortcutFor } from "./shortcuts";
 import { useSocket } from "./socket";
@@ -354,8 +355,11 @@ function Workspace({ authRequired, onSignOut }: { authRequired: boolean; onSignO
   return (
     <div className="control">
       <header className="topbar">
-        <h1>Lyric Presenter</h1>
-        <span className="muted">Control panel</span>
+        <Logo className="topbar-logo" />
+        <div className="topbar-title">
+          <h1>Lyric Presenter</h1>
+          <span className="muted">Control panel</span>
+        </div>
         {authRequired && (
           <button type="button" className="signout" onClick={onSignOut}>
             Sign out

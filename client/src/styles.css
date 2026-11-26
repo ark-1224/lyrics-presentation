@@ -59,13 +59,23 @@ input, textarea {
   width: 100%;
 }
 
+/* --- logo (navy and gold; inverted on dark backgrounds) --- */
+:root { --logo-tile: #13296b; --logo-mark: #e0b43c; }
+@media (prefers-color-scheme: dark) { :root { --logo-tile: #e0b43c; --logo-mark: #13296b; } }
+.logo { display: block; flex: none; }
+.logo-tile { fill: var(--logo-tile); }
+.logo-mark { fill: var(--logo-mark); stroke: none; }
+.logo-mark path { stroke: var(--logo-mark); }
+
 /* --- layout --- */
 .control { min-height: 100vh; display: flex; flex-direction: column; }
 .topbar {
-  display: flex; align-items: baseline; gap: 0.75rem;
+  display: flex; align-items: center; gap: 0.75rem;
   padding: 0.6rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border);
 }
+.topbar-title { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 0.75rem; }
 .topbar .signout { margin-left: auto; }
+.topbar-logo { width: 2.75rem; height: 2.75rem; }
 .banner {
   display: flex; justify-content: space-between; align-items: center; gap: 1rem;
   margin: 0.75rem 1rem 0; padding: 0.5rem 0.75rem;
@@ -284,7 +294,7 @@ dialog.import-dialog[open] { display: flex; flex-direction: column; }
 
 .home-header { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
 .home-brand { display: flex; align-items: center; gap: 1rem; min-width: 0; flex: 1 1 18rem; }
-.home-logo { width: 3.4rem; height: 3.4rem; border-radius: 16px; display: grid; place-items: center; background: var(--accent); color: var(--accent-text); flex: none; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.home-logo { width: 3.4rem; height: 3.4rem; border-radius: 22%; box-shadow: 0 6px 18px color-mix(in srgb, var(--logo-tile) 35%, transparent); }
 .home h1 { font-size: clamp(1.5rem, 4vw, 2rem); letter-spacing: -0.015em; line-height: 1.15; }
 .home-sub { margin: 0.2rem 0 0; color: var(--muted); }
 

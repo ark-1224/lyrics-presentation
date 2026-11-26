@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { Logo } from "./Logo";
 
 type Health =
   | { state: "checking" }
@@ -112,11 +113,7 @@ export function Home() {
       <main className="home-inner">
         <header className="home-header">
           <div className="home-brand">
-            <div className="home-logo" aria-hidden>
-            <svg viewBox="0 0 48 48" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 14h24M12 24h24M12 34h14" />
-            </svg>
-            </div>
+            <Logo className="home-logo" />
             <div>
               <h1>Lyric Presenter</h1>
               <p className="home-sub">Lyrics over a looping video, for church and events.</p>
